@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-+pbh^dl*(g9(^#y9j-tky*!)h_l7^4p452qtlojee)=fqr3d#1
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ["https://cosmic-centaur-9cf677.netlify.app/"]
+ALLOWED_HOSTS = ["https://cosmic-centaur-9cf677.netlify.app/", 'localhost', '127.0.0.1', '.onrender.com']
 
 # In settings.py
 GOOGLE_VISION_API_KEY = os.getenv('GOOGLE_VISION_API_KEY')
