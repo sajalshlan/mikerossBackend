@@ -24,9 +24,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-+pbh^dl*(g9(^#y9j-tky*!)h_l7^4p452qtlojee)=fqr3d#1'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
-ALLOWED_HOSTS = ["https://cosmic-centaur-9cf677.netlify.app/", 'localhost', '127.0.0.1', '.onrender.com']
+ALLOWED_HOSTS = ["https://cosmic-centaur-9cf677.netlify.app/", 'localhost', '127.0.0.1', '.onrender.com', "http://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.js"]
 
 # In settings.py
 GOOGLE_VISION_API_KEY = os.getenv('GOOGLE_VISION_API_KEY')

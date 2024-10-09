@@ -4,6 +4,8 @@ __pycache__/
 *.pyo
 *.pyd
 
+legal_venv
+
 # Django
 *.log
 local_settings.py

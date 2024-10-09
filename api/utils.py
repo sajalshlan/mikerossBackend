@@ -10,6 +10,7 @@ import requests
 import zipfile
 from pdf2image import convert_from_bytes
 import google.generativeai as genai
+from PIL import Image
 from typing import List, Tuple, Dict
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ class RAGPipeline:
 
     def analyze_images(self, images: List[Tuple[str, Tuple[str, bytes, str]]]) -> str:
         texts = []
-        for _, image_tuple in images[:25]:  # Limit to 25 pages for OCR
+        for _, image_tuple in images[:50]:  # Limit to 25 pages for OCR
             try:
                 _, img_bytes, _ = image_tuple
                 base64_image = base64.b64encode(img_bytes).decode('utf-8')
@@ -60,6 +61,27 @@ class RAGPipeline:
         if response.status_code != 200:
             raise Exception(f"Request failed with status code {response.status_code}: {response.text}")
         return response.json()
+    
+def ocr_process(file_path, rag_pipeline):
+    try:
+        if file_path.lower().endswith('.pdf'):
+            with open(file_path, 'rb') as file:
+                images = convert_from_bytes(file.read())
+        else:
+            images = [Image.open(file_path)]
+        
+        image_files = []
+        for i, image in enumerate(images[:50]):  # Limit to 25 pages/images for OCR
+            img_byte_arr = io.BytesIO()
+            image.save(img_byte_arr, format='JPEG')
+            img_byte_arr = img_byte_arr.getvalue()
+            image_files.append(('image', ('image.jpg', img_byte_arr, 'image/jpeg')))
+        
+        ocr_text = rag_pipeline.analyze_images(image_files)
+        return ocr_text
+    except Exception as e:
+        logger.error(f"Error processing image with OCR: {e}")
+        return ""
 
 def extract_text_from_file(file_path, rag_pipeline: RAGPipeline):
     logger.info(f"Extracting text from file: {file_path}")
@@ -75,17 +97,7 @@ def extract_text_from_file(file_path, rag_pipeline: RAGPipeline):
                     return " ".join([page.extract_text() or "" for page in pdf.pages])
                 else:
                     logger.info("PDF seems to be image-based. Attempting OCR.")
-                    with open(file_path, 'rb') as file:
-                        images = convert_from_bytes(file.read())
-                    image_files = []
-                    for i, image in enumerate(images[:25]):  # Limit to 25 pages for OCR
-                        img_byte_arr = io.BytesIO()
-                        image.save(img_byte_arr, format='JPEG')
-                        img_byte_arr = img_byte_arr.getvalue()
-                        image_files.append(('image', ('image.jpg', img_byte_arr, 'image/jpeg')))
-                    
-                    ocr_text = rag_pipeline.analyze_images(image_files)
-                    return ocr_text
+                    return ocr_process(file_path, rag_pipeline)
         except Exception as e:
             logger.error(f"Error processing PDF: {e}")
             return ""
@@ -97,9 +109,13 @@ def extract_text_from_file(file_path, rag_pipeline: RAGPipeline):
         logger.info("Processing text file")
         with open(file_path, 'r') as file:
             return file.read()
+    elif file_extension.lower() in ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif']:
+        logger.info(f"Processing image file: {file_extension}")
+        return ocr_process(file_path, rag_pipeline)
     else:
         logger.error(f"Unsupported file format: {file_extension}")
         raise ValueError(f"Unsupported file format: {file_extension}")
+        
 
 def extract_text_from_zip(zip_file_path, rag_pipeline: RAGPipeline):
     logger.info(f"Extracting text from ZIP file: {zip_file_path}")
