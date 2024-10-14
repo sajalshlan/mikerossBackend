@@ -5,7 +5,7 @@ from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .utils import RAGPipeline, extract_text_from_file, extract_text_from_zip, perform_analysis as util_perform_analysis
+from .utils import RAGPipeline, extract_text_from_file, extract_text_from_zip, perform_analysis as util_perform_analysis, has_common_party, analyze_conflicts_and_common_parties
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +86,33 @@ def perform_analysis(request):
         return Response(result, status=400 if 'Invalid analysis type' in result['error'] else 500)
     return Response(result)
 
+# @api_view(['POST'])
+# def perform_conflict_check(request):
+#     logger.info("Conflict check request received")
+#     texts = request.data.get('texts')
+
+#     if not texts or not isinstance(texts, dict) or len(texts) < 2:
+#         logger.warning("Invalid input for conflict check")
+#         return Response({'error': 'At least two documents are required for conflict check'}, status=400)
+
+#     # Check if there's at least one common party
+#     if not has_common_party(texts):
+#         logger.info("No common parties found in the documents")
+#         return Response({
+#             'success': True,
+#             'result': 'No conflicts to check. No common parties found in the documents.'
+#         })
+
+#     try:
+#         combined_text = "\n\n".join([f"Document: {filename}\n\n{content}" for filename, content in texts.items()])
+#         result = analyze_text('conflict', combined_text)
+#         if 'error' in result:
+#             return Response(result, status=500)
+#         return Response(result)
+#     except Exception as e:
+#         logger.exception("Error performing conflict check")
+#         return Response({'error': str(e)}, status=500)
+
 @api_view(['POST'])
 def perform_conflict_check(request):
     logger.info("Conflict check request received")
@@ -96,11 +123,11 @@ def perform_conflict_check(request):
         return Response({'error': 'At least two documents are required for conflict check'}, status=400)
 
     try:
-        combined_text = "\n\n".join([f"Document: {filename}\n\n{content}" for filename, content in texts.items()])
-        result = analyze_text('conflict', combined_text)
-        if 'error' in result:
-            return Response(result, status=500)
-        return Response(result)
+        result = analyze_conflicts_and_common_parties(texts)
+        return Response({
+            'success': True,
+            'result': result
+        })
     except Exception as e:
         logger.exception("Error performing conflict check")
         return Response({'error': str(e)}, status=500)

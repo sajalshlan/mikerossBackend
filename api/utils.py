@@ -207,6 +207,32 @@ def perform_analysis(analysis_type, text):
     except Exception as e:
         logger.exception("Error calling Gemini API")
         raise
+    
+def has_common_party(texts):
+    if len(texts) < 2:
+        return False
+
+    prompt = """
+    Analyze the following documents and determine if there is at least one common party present in all of them. 
+    Answer with only 'Yes' if there is at least one common party across all documents, or 'No' if there isn't.
+
+    Documents:
+    """
+
+    for filename, content in texts.items():
+        prompt += f"\n\nFilename: {filename}\nContent (truncated):\n{content[:10000]}"
+
+    prompt += "\n\nIs there at least one common party present in all of the above documents? Answer with only 'Yes' or 'No'."
+
+    try:
+        result = gemini_call("", prompt)
+        logger.info(f"Gemini API response for common party check: {result}")
+        print(result.strip().lower())
+        return result.strip().lower() == 'yes'
+    except Exception as e:
+        logger.exception("Error checking for common party")
+        return False
+    
 
 def gemini_call(text, prompt):
     logger.info("Calling Gemini API")
@@ -225,3 +251,56 @@ def gemini_call(text, prompt):
     except Exception as e:
         logger.error(f"Error calling Gemini API: {str(e)}")
         raise Exception(f"An error occurred while calling Gemini API: {e}")
+
+def analyze_conflicts_and_common_parties(texts: Dict[str, str]) -> str:
+    logger.info("Analyzing conflicts and common parties")
+    
+    prompt = """
+    Analyze the following documents for two tasks:
+    1. Determine if there is at least one common party present in all documents.
+    2. If there is at least one common party, perform a conflict check across all documents.
+
+    For each document, identify any clauses or terms that may conflict with clauses or terms in the other documents.
+
+    Provide your analysis in the following format:
+    Common Party Check:
+    [Yes/No] - There [is/are] [a common party/no common parties] involved across the selected documents.
+
+    If the answer is Yes, continue with:
+
+    Common Parties:
+    - [Name of common party 1]
+    - [Name of common party 2]
+    - ...
+
+
+    Conflict Analysis:
+    Document: [Filename1]
+    Conflicts:
+    1. Clause [X] conflicts with [Filename2], Clause [Y]:
+       - [Brief explanation of the conflict]
+    2. ...
+
+    Document: [Filename2]
+    Conflicts:
+    1. ...
+
+    If no conflicts are found for a document, state "No conflicts found."
+
+    If there is no common party, only provide the Common Party Check result.
+
+    Focus on significant conflicts that could impact the legal or business relationship between the parties involved.
+
+    Documents:
+    """
+
+    for filename, content in texts.items():
+        prompt += f"\n\nFilename: {filename}\nContent (truncated):\n{content}"
+
+    try:
+        result = gemini_call("", prompt)
+        logger.info("Gemini API call for conflict and common party analysis successful")
+        return result
+    except Exception as e:
+        logger.exception("Error analyzing conflicts and common parties")
+        raise Exception(f"An error occurred while analyzing conflicts and common parties: {e}")
