@@ -1,5 +1,6 @@
 import os
 import logging
+import base64
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view
@@ -51,15 +52,21 @@ def upload_file(request):
     try:
         if file.name.lower().endswith('.zip'):
             logger.info("Processing ZIP file")
-            extracted_texts = extract_text_from_zip(file_path, rag_pipeline)
-            return Response({'success': True, 'texts': extracted_texts})
+            extracted_contents = extract_text_from_zip(file_path, rag_pipeline)
+            return Response({'success': True, 'files': extracted_contents})
         else:
             logger.info("Processing single file")
             extracted_text = extract_text_from_file(file_path, rag_pipeline)
-            return Response({
+            response_data = {
                 'success': True, 
                 'text': extracted_text
-            })
+            }
+            if file.name.lower().endswith('.pdf'):
+                with open(file_path, 'rb') as pdf_file:
+                    pdf_content = pdf_file.read()
+                    response_data['base64'] = base64.b64encode(pdf_content).decode('utf-8')
+                    response_data['ocr_text'] = extracted_text
+            return Response(response_data)
     except Exception as e:
         logger.error(f"Error processing file: {str(e)}")
         return Response({'error': str(e)}, status=500)

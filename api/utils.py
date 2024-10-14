@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import pdfplumber
 import docx
 import base64
+import tempfile
 import requests
 import zipfile
 from pdf2image import convert_from_bytes
@@ -29,7 +30,7 @@ class RAGPipeline:
 
     def analyze_images(self, images: List[Tuple[str, Tuple[str, bytes, str]]]) -> str:
         texts = []
-        for _, image_tuple in images[:50]:  # Limit to 25 pages for OCR
+        for _, image_tuple in images[:50]:  # Limit to 50 pages for OCR
             try:
                 _, img_bytes, _ = image_tuple
                 base64_image = base64.b64encode(img_bytes).decode('utf-8')
@@ -61,7 +62,7 @@ class RAGPipeline:
         if response.status_code != 200:
             raise Exception(f"Request failed with status code {response.status_code}: {response.text}")
         return response.json()
-    
+
 def ocr_process(file_path, rag_pipeline):
     try:
         if file_path.lower().endswith('.pdf'):
@@ -71,14 +72,15 @@ def ocr_process(file_path, rag_pipeline):
             images = [Image.open(file_path)]
         
         image_files = []
-        for i, image in enumerate(images[:50]):  # Limit to 25 pages/images for OCR
+        for i, image in enumerate(images[:50]):  # Limit to 50 pages/images for OCR
             img_byte_arr = io.BytesIO()
             image.save(img_byte_arr, format='JPEG')
             img_byte_arr = img_byte_arr.getvalue()
             image_files.append(('image', ('image.jpg', img_byte_arr, 'image/jpeg')))
         
         ocr_text = rag_pipeline.analyze_images(image_files)
-        return ocr_text
+        return ocr_text.encode('utf-8', errors='ignore').decode('utf-8')
+
     except Exception as e:
         logger.error(f"Error processing image with OCR: {e}")
         return ""
@@ -115,127 +117,40 @@ def extract_text_from_file(file_path, rag_pipeline: RAGPipeline):
     else:
         logger.error(f"Unsupported file format: {file_extension}")
         raise ValueError(f"Unsupported file format: {file_extension}")
-        
 
 def extract_text_from_zip(zip_file_path, rag_pipeline: RAGPipeline):
     logger.info(f"Extracting text from ZIP file: {zip_file_path}")
-    extracted_texts = {}
+    extracted_contents = {}
     with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
-        for file_name in zip_ref.namelist():
-            try:   
-                with zip_ref.open(file_name) as file:
-                    file_like_object = io.BytesIO(file.read())
-                    file_like_object.name = file_name  # Add name attribute
-                    text = extract_text_from_file(file_like_object, rag_pipeline)
-                    if text.strip():
-                        extracted_texts[file_name] = text
-                        logger.info(f"Successfully extracted text from {file_name}")
-                    else:
-                        logger.warning(f"No text could be extracted from {file_name}")
-                        extracted_texts[file_name] = "No text could be extracted"
-            except Exception as e:
-                logger.error(f"Error processing {file_name} from ZIP: {str(e)}")
-                extracted_texts[file_name] = f"Error: {str(e)}"
-    return extracted_texts
-
-# def perform_analysis(analysis_type, text):
-#     logger.info(f"Performing analysis: {analysis_type}")
-    
-#     if analysis_type == 'summary':
-#         prompt = "Provide a brief summary of this document."
-#     elif analysis_type == 'risky':
-#         prompt = """
-#         Analyze the document and identify potentially risky clauses or terms. For each risky clause:
-#         1. Start with the actual clause number as it appears in the document.
-#         2. Quote the relevant part of the clause.
-#         3. Explain why it's potentially risky.
-
-#         Format your response as follows:
-
-#         Clause [X]: "[Quote the relevant part]"
-#         Risk: [Explain the potential risk]
-
-#         Where [X] is the actual clause number from the document.
-#         IF NO CLAUSE NUMBER IS PRESENT IN THE DOCUMENT, DO NOT GIVE ANY NUMBER TO THE CLAUSE BY YOURSELF THEN.
-#         """
-#     elif analysis_type == 'conflict':
-#         prompt = """
-#         Perform a conflict check across all the provided documents. For each document, identify any clauses or terms that may conflict with clauses or terms in the other documents. 
-
-#         Provide your analysis in the following format:
-
-#         Document: [Filename1]
-#         Conflicts:
-#         1. Clause [X] conflicts with [Filename2], Clause [Y]:
-#            - [Brief explanation of the conflict]
-#         2. ...
-
-#         Document: [Filename2]
-#         Conflicts:
-#         1. ...
-
-#         If no conflicts are found for a document, state "No conflicts found."
-
-#         Focus on significant conflicts that could impact the legal or business relationship between the parties involved.
-#         """
-#     elif analysis_type == 'structure':
-#         prompt = """
-#         Analyze the structure of the document and provide a summary of its organization. Include the following:
-
-#         1. A brief outline of the document's flow and how information is presented
-#         2. Main sections or parts of the document
-#         3. Any notable formatting or structural elements (e.g., numbered clauses, appendices)
-
-#         Format your response as a concise summary, highlighting the key structural elements of the document.
-#         """
-#     elif analysis_type == 'ask':
-#         prompt = "You are an AI assistant. Please provide a response to the user's query based on the given document content."
-#     else:
-#         logger.error(f"Invalid analysis type: {analysis_type}")
-#         raise ValueError(f"Invalid analysis type: {analysis_type}")
-
-#     logger.info(f"Using prompt: {prompt}")
-    
-#     try:
-#         result = claude_call(text, prompt)
-#         logger.info("Claude API call successful")
-#         return result
-#     except Exception as e:
-#         logger.exception("Error calling Claude API")
-#         raise
-
-# def claude_call(text, prompt):
-#     logger.info("Calling Claude API")
-#     client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
-
-#     try:
-#         message = client.messages.create(
-#             model="claude-3-5-sonnet-20240620",
-#             max_tokens=3000,
-#             temperature=0,
-#             system="You are a general counsel of a fortune 500 company.",
-#             messages=[
-#                 {
-#                     "role": "user",
-#                     "content": [
-#                         {
-#                             "type": "text",
-#                             "text": text,
-#                         },
-#                         {
-#                             "type": "text",
-#                             "text": prompt
-#                         },
-#                     ],
-#                 }
-#             ],
-#         )
-#         logger.info("Claude API call successful")
-#         return ''.join(block.text for block in message.content if block.type == 'text')
-#     except Exception as e:
-#         logger.error(f"Error calling Claude API: {str(e)}")
-#         raise Exception(f"An error occurred while calling Claude API: {e}")
-    
+        # Create a temporary directory to extract files
+        with tempfile.TemporaryDirectory() as temp_dir:
+            zip_ref.extractall(temp_dir)
+            for root, _, files in os.walk(temp_dir):
+                for file_name in files:
+                    file_path = os.path.join(root, file_name)
+                    try:
+                        extracted_text = extract_text_from_file(file_path, rag_pipeline)
+                        if file_name.lower().endswith('.pdf'):
+                            with open(file_path, 'rb') as pdf_file:
+                                pdf_content = pdf_file.read()
+                                extracted_contents[file_name] = {
+                                    'type': 'pdf',
+                                    'content': extracted_text,
+                                    'base64': base64.b64encode(pdf_content).decode('utf-8')
+                                }
+                        else:
+                            extracted_contents[file_name] = {
+                                'type': 'text',
+                                'content': extracted_text
+                            }
+                        logger.info(f"Successfully processed {file_name}")
+                    except Exception as e:
+                        logger.error(f"Error processing {file_name} from ZIP: {str(e)}")
+                        extracted_contents[file_name] = {
+                            'type': 'error',
+                            'content': f"Error: {str(e)}"
+                        }
+    return extracted_contents
 
 def perform_analysis(analysis_type, text):
     logger.info(f"Performing analysis: {analysis_type}")
@@ -276,16 +191,6 @@ def perform_analysis(analysis_type, text):
         If no conflicts are found for a document, state "No conflicts found."
 
         Focus on significant conflicts that could impact the legal or business relationship between the parties involved.
-        """
-    elif analysis_type == 'structure':
-        prompt = """
-        Analyze the structure of the document and provide a summary of its organization. Include the following:
-
-        1. A brief outline of the document's flow and how information is presented
-        2. Main sections or parts of the document
-        3. Any notable formatting or structural elements (e.g., numbered clauses, appendices)
-
-        Format your response as a concise summary, highlighting the key structural elements of the document.
         """
     elif analysis_type == 'ask':
         prompt = "You are an AI assistant. Please provide a response to the user's query based on the given document content."
