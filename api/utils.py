@@ -1,7 +1,6 @@
 import os
 import io
 import logging
-import anthropic
 from dotenv import load_dotenv
 import pdfplumber
 import docx
