@@ -1,10 +1,11 @@
 import os
 import logging
+import base64
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .utils import RAGPipeline, extract_text_from_file, extract_text_from_zip, perform_analysis as util_perform_analysis
+from .utils import RAGPipeline, extract_text_from_file, extract_text_from_zip, perform_analysis as util_perform_analysis, analyze_conflicts_and_common_parties
 
 logger = logging.getLogger(__name__)
 
@@ -51,15 +52,21 @@ def upload_file(request):
     try:
         if file.name.lower().endswith('.zip'):
             logger.info("Processing ZIP file")
-            extracted_texts = extract_text_from_zip(file_path, rag_pipeline)
-            return Response({'success': True, 'texts': extracted_texts})
+            extracted_contents = extract_text_from_zip(file_path, rag_pipeline)
+            return Response({'success': True, 'files': extracted_contents})
         else:
             logger.info("Processing single file")
             extracted_text = extract_text_from_file(file_path, rag_pipeline)
-            return Response({
+            response_data = {
                 'success': True, 
                 'text': extracted_text
-            })
+            }
+            if file.name.lower().endswith('.pdf'):
+                with open(file_path, 'rb') as pdf_file:
+                    pdf_content = pdf_file.read()
+                    response_data['base64'] = base64.b64encode(pdf_content).decode('utf-8')
+                    response_data['ocr_text'] = extracted_text
+            return Response(response_data)
     except Exception as e:
         logger.error(f"Error processing file: {str(e)}")
         return Response({'error': str(e)}, status=500)
@@ -79,6 +86,33 @@ def perform_analysis(request):
         return Response(result, status=400 if 'Invalid analysis type' in result['error'] else 500)
     return Response(result)
 
+# @api_view(['POST'])
+# def perform_conflict_check(request):
+#     logger.info("Conflict check request received")
+#     texts = request.data.get('texts')
+
+#     if not texts or not isinstance(texts, dict) or len(texts) < 2:
+#         logger.warning("Invalid input for conflict check")
+#         return Response({'error': 'At least two documents are required for conflict check'}, status=400)
+
+#     # Check if there's at least one common party
+#     if not has_common_party(texts):
+#         logger.info("No common parties found in the documents")
+#         return Response({
+#             'success': True,
+#             'result': 'No conflicts to check. No common parties found in the documents.'
+#         })
+
+#     try:
+#         combined_text = "\n\n".join([f"Document: {filename}\n\n{content}" for filename, content in texts.items()])
+#         result = analyze_text('conflict', combined_text)
+#         if 'error' in result:
+#             return Response(result, status=500)
+#         return Response(result)
+#     except Exception as e:
+#         logger.exception("Error performing conflict check")
+#         return Response({'error': str(e)}, status=500)
+
 @api_view(['POST'])
 def perform_conflict_check(request):
     logger.info("Conflict check request received")
@@ -89,11 +123,11 @@ def perform_conflict_check(request):
         return Response({'error': 'At least two documents are required for conflict check'}, status=400)
 
     try:
-        combined_text = "\n\n".join([f"Document: {filename}\n\n{content}" for filename, content in texts.items()])
-        result = analyze_text('conflict', combined_text)
-        if 'error' in result:
-            return Response(result, status=500)
-        return Response(result)
+        result = analyze_conflicts_and_common_parties(texts)
+        return Response({
+            'success': True,
+            'result': result
+        })
     except Exception as e:
         logger.exception("Error performing conflict check")
         return Response({'error': str(e)}, status=500)
