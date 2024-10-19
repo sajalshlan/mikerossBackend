@@ -201,6 +201,18 @@ def perform_analysis(analysis_type, text):
         """
     elif analysis_type == 'ask':
         prompt = "You are an AI assistant. Please provide a response to the user's query based on the given document content."
+    elif analysis_type == 'draft':
+        prompt = """
+        Based on the provided document content, create a professional legal draft. Follow these guidelines:
+
+        1. Maintain a formal and precise legal language.
+        2. Include all necessary sections typically found in this type of legal document (e.g., definitions, parties involved, terms and conditions, etc.).
+        3. Ensure the draft is well-structured with clear headings and subheadings.
+        4. Include any specific clauses or terms mentioned in the original content.
+        5. If any information is missing or unclear, use placeholders like [PARTY A] or [SPECIFIC DATE] to indicate where additional information is needed.
+
+        Begin the draft with an appropriate title and continue with the full content of the legal document.
+        """
     else:
         logger.error(f"Invalid analysis type: {analysis_type}")
         raise ValueError(f"Invalid analysis type: {analysis_type}")
