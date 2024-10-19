@@ -104,12 +104,20 @@ def extract_text_from_file(file_path, rag_pipeline: RAGPipeline):
             return ""
     elif file_extension.lower() in ['.doc', '.docx']:
         logger.info("Processing Word document")
-        doc = docx.Document(file_path)
-        return " ".join([paragraph.text for paragraph in doc.paragraphs])
+        try:
+            doc = docx.Document(file_path)
+            return " ".join([paragraph.text for paragraph in doc.paragraphs])
+        except Exception as e:
+            logger.error(f"Error processing Word document: {e}")
+            return ""
     elif file_extension.lower() == '.txt':
         logger.info("Processing text file")
-        with open(file_path, 'r') as file:
-            return file.read()
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                return file.read()
+        except Exception as e:
+            logger.error(f"Error processing text file: {e}")
+            return ""
     elif file_extension.lower() in ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif']:
         logger.info(f"Processing image file: {file_extension}")
         return ocr_process(file_path, rag_pipeline)
