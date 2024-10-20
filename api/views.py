@@ -72,14 +72,19 @@ def upload_file(request):
         return Response({'error': str(e)}, status=500)
     finally:
         # Clean up the uploaded file
-        os.remove(file_path)
-        logger.info(f"Removed temporary file: {file_path}")
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            logger.info(f"Removed temporary file: {file_path}")
 
 @api_view(['POST'])
 def perform_analysis(request):
     logger.info("Analysis request received")
     analysis_type = request.data.get('analysis_type')
     text = request.data.get('text')
+    print("--------------------------------")
+    print("analysis_type", analysis_type)
+    print("request.data", request.data)
+    print("--------------------------------")
 
     result = analyze_text(analysis_type, text)
     if 'error' in result:
