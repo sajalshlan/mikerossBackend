@@ -200,7 +200,7 @@ def perform_analysis(analysis_type, text):
     
     elif analysis_type == 'risky':
         prompt = """
-        Extract and analyze all potential risks from each party's perspective:
+        As a general counsel of a fortune 500 company, extract and analyze all potential risks from each party's perspective:
 
         1. IDENTIFY ALL PARTIES: (but do not mention this in your response)
         List every party mentioned in the document
@@ -208,19 +208,19 @@ def perform_analysis(analysis_type, text):
         2. RISK ANALYSIS BY PARTY: (but do not mention this in your response)
         For each identified party, list ALL risks they face:
 
-        [PARTY NAME 1]:(send this in your response with a special tag like *****PARTY NAME 1*****)
-        Financial Risks:
+        [PARTY NAME 1] (send this in your response with a special tag like *****PARTY NAME 1*****)
+        Legal Risks(in detail)
+        - Compliance requirements
+        - Liability exposure
+        - Regulatory obligations
+
+        Financial Risks
         - List each financial risk
         - Include monetary exposure
         - Payment obligations
         - Financial penalties
         
-        Legal Risks:
-        - Compliance requirements
-        - Liability exposure
-        - Regulatory obligations
-        
-        Business Risks:
+        Business Risks
         - Market impact
         - Competitive restrictions
         - Reputational concerns
