@@ -46,7 +46,8 @@ def upload_file(request):
         return Response({'error': 'No file uploaded'}, status=400)
 
     file = request.FILES['file']
-    logger.info(f"Received file: {file.name}")
+    file_extension = request.POST.get('file_extension', '')
+    logger.info(f"Received file: {file.name} with extension {file_extension}")
     file_path = os.path.join(settings.MEDIA_ROOT, file.name)
 
     os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
@@ -62,7 +63,7 @@ def upload_file(request):
             return Response({'success': True, 'files': extracted_contents})
         else:
             logger.info("Processing single file")
-            extracted_text = extract_text_from_file(file_path, rag_pipeline)
+            extracted_text = extract_text_from_file(file_path, rag_pipeline, file_extension)
             response_data = {
                 'success': True, 
                 'text': extracted_text
@@ -138,3 +139,4 @@ def perform_conflict_check(request):
     except Exception as e:
         logger.exception("Error performing conflict check")
         return Response({'error': str(e)}, status=500)
+
