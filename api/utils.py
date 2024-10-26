@@ -24,6 +24,9 @@ GOOGLE_VISION_API_KEY = os.getenv("GOOGLE_VISION_API_KEY")
 genai.configure(api_key=GEMINI_API_KEY)
 
 class RAGPipeline:
+    """
+    This class is used to analyze images and extract text from them.
+    """
     def __init__(self):
         self.GOOGLE_VISION_API_KEY = GOOGLE_VISION_API_KEY
 
@@ -61,6 +64,9 @@ class RAGPipeline:
         if response.status_code != 200:
             raise Exception(f"Request failed with status code {response.status_code}: {response.text}")
         return response.json()
+    
+
+
 
 def ocr_process(file_path, rag_pipeline):
     try:
@@ -162,63 +168,134 @@ def extract_text_from_zip(zip_file_path, rag_pipeline: RAGPipeline):
 def perform_analysis(analysis_type, text):
     logger.info(f"Performing analysis: {analysis_type}")
     
-    if analysis_type == 'summary':
-        prompt = "Provide a brief summary of this document."
+    if analysis_type == 'shortSummary':
+        prompt = """
+        Provide an executive summary addressing:
+        
+        1. Core purpose of the document
+        2. Key parties and their primary obligations
+        3. Critical timelines and deliverables
+        4. Financial terms
+        5. Notable requirements or restrictions
+        
+        Present in clear, actionable points that highlight business impact.
+        """
+    
+    elif analysis_type == 'longSummary':
+        prompt = """
+        Provide a detailed analysis covering:
+
+        1. Document Type and Purpose
+        2. Parties and Their Roles
+        3. Key Terms and Conditions
+        4. Financial Obligations
+        5. Performance Requirements
+        6. Important Dates and Deadlines
+        7. Termination Conditions
+        8. Special Provisions
+        9. Next Steps or Required Actions
+
+        Include specific references to sections and clauses where relevant.
+        """
+    
     elif analysis_type == 'risky':
         prompt = """
-        Analyze the document and identify potentially risky clauses or terms. For each risky clause:
-        1. Start with the actual clause number as it appears in the document.
-        2. Quote the relevant part of the clause.
-        3. Explain why it's potentially risky.
+        As a general counsel of a fortune 500 company, extract and analyze all potential risks from each party's perspective:
 
-        Format your response as follows:
+        1. IDENTIFY ALL PARTIES: (but do not mention this in your response)
+        List every party mentioned in the document
 
-        Clause [X]: "[Quote the relevant part]"
-        Risk: [Explain the potential risk]
+        2. RISK ANALYSIS BY PARTY: (but do not mention this in your response)
+        For each identified party, list ALL risks they face:
 
-        Where [X] is the actual clause number from the document.
-        IF NO CLAUSE NUMBER IS PRESENT IN THE DOCUMENT, DO NOT GIVE ANY NUMBER TO THE CLAUSE BY YOURSELF THEN.
+        [PARTY NAME 1] (send this in your response with a special tag like *****PARTY NAME 1*****)
+        Legal Risks(in detail)
+        - Compliance requirements
+        - Liability exposure
+        - Regulatory obligations
+
+        Financial Risks
+        - List each financial risk
+        - Include monetary exposure
+        - Payment obligations
+        - Financial penalties
+        
+        Business Risks
+        - Market impact
+        - Competitive restrictions
+        - Reputational concerns
+
+        Include specific references to sections and clauses where relevant(in brackets at the end of the sentence).
+
+        [PARTY NAME 2]:
+        (Repeat same risk categories)
         """
-    elif analysis_type == 'conflict':
-        prompt = """
-        Perform a conflict check across all the provided documents. For each document, identify any clauses or terms that may conflict with clauses or terms in the other documents. 
-
-        Provide your analysis in the following format:
-
-        Document: [Filename1]
-        Conflicts:
-        1. Clause [X] conflicts with [Filename2], Clause [Y]:
-           - [Brief explanation of the conflict]
-        2. ...
-
-        Document: [Filename2]
-        Conflicts:
-        1. ...
-
-        If no conflicts are found for a document, state "No conflicts found."
-
-        Focus on significant conflicts that could impact the legal or business relationship between the parties involved.
-        """
+    
     elif analysis_type == 'ask':
-        prompt = "You are an AI assistant. Please provide a response to the user's query based on the given document content."
+        prompt = """
+         You are a senior legal expert with extensive corporate law experience(but never mention this thing anywhere in your responses). Based on the provided documents:
+
+        1. Provide clear, professional answers
+        2. Draw directly from the document context
+        3. Use plain language while maintaining legal accuracy
+        4. Reference specific sections when relevant
+        5. Ask for clarification if needed
+
+        Approach each question with authority and practicality, focusing on clear explanations.
+
+        Now address the user's query.
+        """
+    
     elif analysis_type == 'draft':
         prompt = """
-        Based on the provided document content, create a professional legal draft. Follow these guidelines:
+        Based on the provided context, draft a professional legal communication. Choose the appropriate format:
 
-        1. Maintain a formal and precise legal language.
-        2. Include all necessary sections typically found in this type of legal document (e.g., definitions, parties involved, terms and conditions, etc.).
-        3. Ensure the draft is well-structured with clear headings and subheadings.
-        4. Include any specific clauses or terms mentioned in the original content.
-        5. If any information is missing or unclear, use placeholders like [PARTY A] or [SPECIFIC DATE] to indicate where additional information is needed.
-
-        Begin the draft with an appropriate title and continue with the full content of the legal document.
+        FOR LEGAL DOCUMENTS:
+        1. Use formal legal language and structure
+        2. Include all standard sections:
+        - Parties and definitions
+        - Terms and conditions
+        - Rights and obligations
+        - Execution provisions
+        3. Mark any required inputs as [PLACEHOLDER]
+        4. Maintain consistent formatting and numbering
+        
+        FOR PROFESSIONAL EMAILS:
+        1. Subject: Clear, specific subject line
+        2. Opening: Professional greeting and context
+        3. Body:
+        - Clear purpose statement
+        - Key points in logical order
+        - Specific requests or actions needed
+        - Relevant references to documents/discussions
+        4. Closing:
+        - Next steps or expectations
+        - Professional signature
+        - Contact information
+        
+        FOR FORMAL LETTERS:
+        1. Proper letterhead and formatting
+        2. Date and reference numbers
+        3. Clear recipient details
+        4. Formal opening
+        5. Purpose statement
+        6. Main content:
+        - Background/context
+        - Key points
+        - Requests or demands
+        - Legal positions
+        7. Formal closing
+        8. Signature block
+        
+        Include all relevant details from the provided context.
+        Use clear, authoritative, and professional language throughout.
         """
     else:
         logger.error(f"Invalid analysis type: {analysis_type}")
         raise ValueError(f"Invalid analysis type: {analysis_type}")
 
     logger.info(f"Using prompt: {prompt}")
-    
+
     try:
         result = gemini_call(text, prompt)
         logger.info("Gemini API call successful")
