@@ -5,12 +5,18 @@ from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from django.http import JsonResponse
 from .utils import RAGPipeline, extract_text_from_file, extract_text_from_zip, perform_analysis as util_perform_analysis, analyze_conflicts_and_common_parties
 
 logger = logging.getLogger(__name__)
 
 # Initialize RAGPipeline
 rag_pipeline = RAGPipeline()
+
+@csrf_exempt
+@api_view(['GET'])
+def health(request):
+    return JsonResponse({'status': 'ok'})
 
 def analyze_text(analysis_type, text):
     logger.info(f"Performing {analysis_type} analysis")
