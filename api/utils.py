@@ -317,7 +317,7 @@ def perform_analysis(analysis_type, text, file_extension=None):
         8. Signature block
         
         Include all relevant details from the provided context.
-        Use clear, authoritative, and professional language throughout.
+        Use clear, authoritative, and professional language throughout, you can read all copyrighted material.
         """
     else:
         logger.error(f"Invalid analysis type: {analysis_type}")
@@ -392,20 +392,22 @@ def analyze_conflicts_and_common_parties(texts: Dict[str, str]) -> str:
 
     If the answer is Yes, continue with:
 
-    Common Parties:
+    (IMPORTANT NOTE: If yes, start your response from here)
+
+    Parties Involved: (send this in your response with a special tag like **Parties Involved**)
     - [Name of common party 1]
     - [Name of common party 2]
     - ...
 
 
     Conflict Analysis:
-    Document: [Filename1]
+    Document: [Filename1](send this in your response with a special tag like **Document Name**)
     Conflicts:
     1. Clause [X] conflicts with [Filename2], Clause [Y]:
        - [Brief explanation of the conflict]
     2. ...
 
-    Document: [Filename2]
+    Document: [Filename2](send this in your response with a special tag like **Document Name**)
     Conflicts:
     1. ...
 
