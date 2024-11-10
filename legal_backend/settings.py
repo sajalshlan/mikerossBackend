@@ -25,12 +25,33 @@ SECRET_KEY = 'django-insecure-+pbh^dl*(g9(^#y9j-tky*!)h_l7^4p452qtlojee)=fqr3d#1
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
-ALLOWED_HOSTS = ["https://cosmic-centaur-9cf677.netlify.app/", 'localhost', '127.0.0.1', '.onrender.com', "http://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.js"]
-
-# In settings.py
 GOOGLE_VISION_API_KEY = os.getenv('GOOGLE_VISION_API_KEY')
 
+CORS_ALLOW_ALL_ORIGINS = True  
+
+ALLOWED_HOSTS = ['*']
+
+CORS_ALLOW_METHODS = [
+   'DELETE',
+   'GET',
+   'OPTIONS',
+   'PATCH',
+   'POST',
+   'PUT',
+]
+
+
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 
 # Application definition
 
@@ -47,6 +68,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -54,12 +76,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = 'legal_backend.urls'
-
-CORS_ALLOW_ALL_ORIGINS = True  
 
 TEMPLATES = [
     {

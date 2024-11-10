@@ -5,12 +5,18 @@ from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from django.http import JsonResponse
 from .utils import RAGPipeline, extract_text_from_file, extract_text_from_zip, perform_analysis as util_perform_analysis, analyze_conflicts_and_common_parties
 
 logger = logging.getLogger(__name__)
 
 # Initialize RAGPipeline
 rag_pipeline = RAGPipeline()
+
+@csrf_exempt
+@api_view(['GET'])
+def health(request):
+    return JsonResponse({'status': 'ok'})
 
 def analyze_text(analysis_type, text):
     logger.info(f"Performing {analysis_type} analysis")
@@ -40,7 +46,8 @@ def upload_file(request):
         return Response({'error': 'No file uploaded'}, status=400)
 
     file = request.FILES['file']
-    logger.info(f"Received file: {file.name}")
+    file_extension = request.POST.get('file_extension', '')
+    logger.info(f"Received file: {file.name} with extension {file_extension}")
     file_path = os.path.join(settings.MEDIA_ROOT, file.name)
 
     os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
@@ -56,7 +63,7 @@ def upload_file(request):
             return Response({'success': True, 'files': extracted_contents})
         else:
             logger.info("Processing single file")
-            extracted_text = extract_text_from_file(file_path, rag_pipeline)
+            extracted_text = extract_text_from_file(file_path, rag_pipeline, file_extension)
             response_data = {
                 'success': True, 
                 'text': extracted_text
@@ -132,3 +139,4 @@ def perform_conflict_check(request):
     except Exception as e:
         logger.exception("Error performing conflict check")
         return Response({'error': str(e)}, status=500)
+

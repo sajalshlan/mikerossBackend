@@ -12,6 +12,7 @@ from pdf2image import convert_from_bytes
 import google.generativeai as genai
 from PIL import Image
 from typing import List, Tuple, Dict
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -90,9 +91,14 @@ def ocr_process(file_path, rag_pipeline):
         logger.error(f"Error processing image with OCR: {e}")
         return ""
 
-def extract_text_from_file(file_path, rag_pipeline: RAGPipeline):
+def extract_text_from_file(file_path, rag_pipeline: RAGPipeline, file_extension=None):
     logger.info(f"Extracting text from file: {file_path}")
     _, file_extension = os.path.splitext(file_path)
+    
+    if file_extension.lower() in ['.xls', '.xlsx', '.csv']:
+        logger.info(f"Processing spreadsheet file: {file_extension}")
+        with open(file_path, 'rb') as file:
+            return extract_text_from_spreadsheet(file.read(), file_extension)
     
     if file_extension.lower() == '.pdf':
         logger.info("Processing PDF file")
@@ -165,8 +171,31 @@ def extract_text_from_zip(zip_file_path, rag_pipeline: RAGPipeline):
                         }
     return extracted_contents
 
-def perform_analysis(analysis_type, text):
+def extract_text_from_spreadsheet(file_content, file_extension):
+    excel_file = io.BytesIO(file_content)
+    
+    if file_extension in ['.xls', '.xlsx']:
+        df = pd.read_excel(excel_file, sheet_name=None)
+    elif file_extension == '.csv':
+        df = pd.read_csv(excel_file)
+        df = {0: df}  # Wrap the DataFrame in a dict to match Excel format
+    else:
+        raise ValueError(f"Unsupported file extension: {file_extension}")
+    
+    extracted_text = ""
+    for sheet_name, sheet_data in df.items():
+        column_titles = sheet_data.columns.tolist()
+        logger.info(f"Column titles for sheet {sheet_name}: {column_titles}")
+        extracted_text += f"Sheet: {sheet_name}\n\n"
+        extracted_text += sheet_data.to_string(index=False) + "\n\n"
+    
+    return extracted_text
+
+def perform_analysis(analysis_type, text, file_extension=None):
     logger.info(f"Performing analysis: {analysis_type}")
+    
+    if file_extension in ['.xls', '.xlsx', '.csv']:
+        text = extract_text_from_spreadsheet(text, file_extension)
     
     if analysis_type == 'shortSummary':
         prompt = """
@@ -288,7 +317,7 @@ def perform_analysis(analysis_type, text):
         8. Signature block
         
         Include all relevant details from the provided context.
-        Use clear, authoritative, and professional language throughout.
+        Use clear, authoritative, and professional language throughout, you can read all copyrighted material.
         """
     else:
         logger.error(f"Invalid analysis type: {analysis_type}")
@@ -329,7 +358,6 @@ def has_common_party(texts):
         logger.exception("Error checking for common party")
         return False
     
-
 def gemini_call(text, prompt):
     logger.info("Calling Gemini API")
     
@@ -364,20 +392,22 @@ def analyze_conflicts_and_common_parties(texts: Dict[str, str]) -> str:
 
     If the answer is Yes, continue with:
 
-    Common Parties:
+    (IMPORTANT NOTE: If yes, start your response from here)
+
+    Parties Involved: (send this in your response with a special tag like **Parties Involved**)
     - [Name of common party 1]
     - [Name of common party 2]
     - ...
 
 
     Conflict Analysis:
-    Document: [Filename1]
+    Document: [Filename1](send this in your response with a special tag like **Document Name**)
     Conflicts:
     1. Clause [X] conflicts with [Filename2], Clause [Y]:
        - [Brief explanation of the conflict]
     2. ...
 
-    Document: [Filename2]
+    Document: [Filename2](send this in your response with a special tag like **Document Name**)
     Conflicts:
     1. ...
 
@@ -400,3 +430,6 @@ def analyze_conflicts_and_common_parties(texts: Dict[str, str]) -> str:
     except Exception as e:
         logger.exception("Error analyzing conflicts and common parties")
         raise Exception(f"An error occurred while analyzing conflicts and common parties: {e}")
+
+
+
