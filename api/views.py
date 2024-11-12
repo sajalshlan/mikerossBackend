@@ -68,6 +68,7 @@ def process_single_file(file_path: str, file_extension: str) -> dict:
     """
     resource_monitor.log_memory("Processing single file")
     response_data = {'success': True}
+    extracted_text = None
     
     try:
         extracted_text = extract_text_from_file(file_path, rag_pipeline, file_extension)
@@ -78,6 +79,7 @@ def process_single_file(file_path: str, file_extension: str) -> dict:
         
         return response_data
     finally:
+        del extracted_text
         resource_monitor.force_cleanup()
 
 def get_pdf_data(file_path: str, extracted_text: str) -> dict:
@@ -124,7 +126,8 @@ def upload_file(request):
     os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
     file_path = os.path.join(settings.MEDIA_ROOT, str(int(time.time()))+ str(random.randint(1, 100)) + file.name)
 
-    
+    extracted_contents = None
+    result = None
     try:
         # Write file in chunks
         with open(file_path, 'wb') as destination:
@@ -145,7 +148,10 @@ def upload_file(request):
         logger.error(f"Error processing file: {str(e)}")
         return Response({'error': str(e)}, status=500)
     finally:
-        # Cleanup
+        if extracted_contents is not None:
+            del extracted_contents
+        if result is not None:
+            del result
         if os.path.exists(file_path):
             os.remove(file_path)
             logger.info(f"Removed temporary file: {file_path}")
@@ -158,9 +164,16 @@ def perform_analysis(request):
     """
     resource_monitor.log_memory("Starting analysis request")
     
+    text = None
     try:
         analysis_type = request.data.get('analysis_type')
         text = request.data.get('text')
+        include_history = request.data.get('include_history', False)
+        
+        # Parse the input for chat analysis
+        if analysis_type == 'ask' and include_history:
+            text = f'{text}\n\nPrevious Conversation (last 10 messages):\n{include_history}'
+            print(f'[API] 📄 Chat history: {text}')
         
         result = analyze_text(analysis_type, text)
         if 'error' in result:
@@ -170,6 +183,8 @@ def perform_analysis(request):
             )
         return Response(result)
     finally:
+        # Clean up the text variable
+        del text
         resource_monitor.force_cleanup()
 
 @api_view(['POST'])
