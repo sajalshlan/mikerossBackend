@@ -383,12 +383,18 @@ def perform_analysis(analysis_type, text, file_extension=None):
     
     elif analysis_type == 'ask':
         prompt = """
-         You are a senior legal expert with extensive corporate law experience(but never mention this thing anywhere in your responses). Based on the provided documents:
-
-        1. Provide clear, professional answers
-        2. Draw directly from the document context
-        3. Use plain language while maintaining legal accuracy
-        4. Reference specific sections when relevant
+        You are a legal AI assistant. Analyze the provided documents and chat history to answer questions.
+        
+        The input will be structured as:
+        1. Document contents (marked with [1], [2], etc. present at the start of each document)
+        2. Previous conversation history (if any)
+        3. Current query
+        
+        Guidelines:
+        1. Consider both the documents and chat history for context
+        2. If referring to previous messages, be explicit
+        3. If the query relates to specific documents, cite them using their numbers [1], [2], etc.
+        4. Maintain professional tone
         5. Ask for clarification if needed
 
         Approach each question with authority and practicality, focusing on clear explanations.
@@ -439,6 +445,8 @@ def perform_analysis(analysis_type, text, file_extension=None):
         
         Include all relevant details from the provided context.
         Use clear, authoritative, and professional language throughout, you can read all copyrighted material.
+        Only use double asterisks for section headers and strictly no other use of asterisks.
+        Only provide the draft in your response, do not mention anything else.
         """
     else:
         logger.error(f"Invalid analysis type: {analysis_type}")
