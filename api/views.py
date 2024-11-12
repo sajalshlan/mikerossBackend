@@ -2,6 +2,8 @@ import os
 import logging
 import base64
 import gc
+import time
+import random
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view
@@ -120,7 +122,8 @@ def upload_file(request):
     
     # Create media directory if it doesn't exist
     os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
-    file_path = os.path.join(settings.MEDIA_ROOT, file.name)
+    file_path = os.path.join(settings.MEDIA_ROOT, str(int(time.time()))+ str(random.randint(1, 100)) + file.name)
+
     
     try:
         # Write file in chunks
