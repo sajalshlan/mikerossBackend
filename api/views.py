@@ -168,14 +168,32 @@ def perform_analysis(request):
     try:
         analysis_type = request.data.get('analysis_type')
         text = request.data.get('text')
+        ocr_text = request.data.get('ocr_text')
+        
+        # Add validation with specific error messages
+        if not analysis_type:
+            logger.warning("Missing analysis_type")
+            return Response({'error': 'Please specify the type of analysis to perform'}, status=400)
+            
+        if not text and not ocr_text:
+            logger.warning("No text or OCR text found to analyze")
+            return Response({'error': 'No text found to analyze. Please provide text content or upload a document.'}, status=400)
+            
+        if analysis_type == 'ocr' and not ocr_text:
+            logger.warning("No OCR text found for OCR analysis")
+            return Response({'error': 'No OCR text found. Please upload a document for OCR analysis.'}, status=400)
+            
+        if analysis_type != 'ocr' and not text:
+            logger.warning("No normal text found for non-OCR analysis")
+            return Response({'error': 'No text content found. Please provide text for analysis.'}, status=400)
+            
         include_history = request.data.get('include_history', False)
         
         # Parse the input for chat analysis
         if analysis_type == 'ask' and include_history:
             text = f'{text}\n\nPrevious Conversation (last 10 messages):\n{include_history}'
             print(f'[API] 📄 Chat history: {text}')
-        
-        result = analyze_text(analysis_type, text)
+        result = analyze_text(analysis_type, text or ocr_text)  # Use OCR text if normal text is not available
         if 'error' in result:
             return Response(
                 result, 
