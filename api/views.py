@@ -298,3 +298,10 @@ def get_organization_filter(user):
 def get_user_profile(request):
     serializer = UserSerializer(request.user)
     return Response(serializer.data)
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    def post(self, request, *args, **kwargs):
+        logger.info(f"Login attempt with username: {request.data.get('username')}")
+        response = super().post(request, *args, **kwargs)
+        logger.info(f"Login response status: {response.status_code}")
+        return response
