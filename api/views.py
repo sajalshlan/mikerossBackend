@@ -6,7 +6,7 @@ import time
 import random
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.http import JsonResponse
 from .utils import (
@@ -17,6 +17,11 @@ from .utils import (
     analyze_conflicts_and_common_parties,
     ResourceMonitor
 )
+from rest_framework import status
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import UserSerializer, RegisterSerializer
+from .models import Document
 
 logger = logging.getLogger(__name__)
 
@@ -108,17 +113,56 @@ def get_pdf_data(file_path: str, extracted_text: str) -> dict:
 
 @csrf_exempt
 @api_view(['POST'])
+@permission_classes([AllowAny])
+def register(request):
+    serializer = RegisterSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+        return Response({
+            "user": UserSerializer(user).data,
+            "message": "User created successfully"
+        }, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def upload_file(request):
     """
     Handles file uploads with memory-efficient processing.
     """
-    resource_monitor.log_memory("Starting file upload")
+    logger.info(f"Upload request from user: {request.user.username} (is_root: {request.user.is_root})")
+    logger.info(f"User organization: {request.user.organization}")
     
-    if 'file' not in request.FILES:
-        logger.warning("No file uploaded in the request")
-        return Response({'error': 'No file uploaded'}, status=400)
+    if not request.user.organization and not request.user.is_root:
+        logger.warning(f"No organization associated with user {request.user.username}")
+        return Response({
+            'error': 'No organization associated',
+            'details': {
+                'is_root': request.user.is_root,
+                'has_organization': bool(request.user.organization)
+            }
+        }, status=400)
     
-    file = request.FILES['file']
+    file = request.FILES.get('file')
+    if not file:
+        return Response({'error': 'No file provided'}, status=400)
+    
+    # Modified organization handling
+    if request.user.is_root:
+        organization = request.data.get('organization')  # Optional for root
+    else:
+        organization = request.user.organization  # Required for non-root
+        if not organization:
+            return Response({'error': 'No organization associated'}, status=400)
+    
+    document = Document.objects.create(
+        title=file.name,
+        file=file,
+        organization=organization,  # Can be None for root user
+        uploaded_by=request.user
+    )
+    
     file_extension = request.POST.get('file_extension', '')
     logger.info(f"Received file: {file.name} with extension {file_extension}")
     
@@ -157,7 +201,9 @@ def upload_file(request):
             logger.info(f"Removed temporary file: {file_path}")
         resource_monitor.force_cleanup()
 
+@csrf_exempt
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def perform_analysis(request):
     """
     Performs text analysis with memory management.
@@ -169,6 +215,9 @@ def perform_analysis(request):
         analysis_type = request.data.get('analysis_type')
         text = request.data.get('text')
         ocr_text = request.data.get('ocr_text')
+
+        print(f'[API] 📄 Analysis type: {analysis_type}')
+        print(f'[API] 📄 Text: {text}')
         
         # Add validation with specific error messages
         if not analysis_type:
@@ -205,7 +254,9 @@ def perform_analysis(request):
         del text
         resource_monitor.force_cleanup()
 
+@csrf_exempt
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def perform_conflict_check(request):
     """
     Performs conflict check with memory management.
@@ -235,3 +286,15 @@ def perform_conflict_check(request):
             del texts[key]
         del texts
         resource_monitor.force_cleanup()
+
+def get_organization_filter(user):
+    """Helper to get organization filter based on user type"""
+    if user.is_root:
+        return {}  # No filter for root users
+    return {'organization': user.organization}
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_profile(request):
+    serializer = UserSerializer(request.user)
+    return Response(serializer.data)
