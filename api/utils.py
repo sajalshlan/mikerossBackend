@@ -101,7 +101,6 @@ class RAGPipeline:
         try:
             response = requests.post(url, json=payload)
             response.raise_for_status()
-            print(response.json())
             return response.json()
         except Exception as e:
             print(response.json())
@@ -314,154 +313,164 @@ def extract_text_from_spreadsheet(file_content: bytes, file_extension: str) -> s
         del df
         gc.collect()
         
-def perform_analysis(analysis_type, text, file_extension=None):
+def perform_analysis(analysis_type: str, text: str, custom_prompt: str = None, use_gemini: bool = True):
     logger.info(f"Performing analysis: {analysis_type}")
+    print(f"[Analysis] 🔍 Custom prompt provided: {bool(custom_prompt)}")
     
-    if file_extension in ['.xls', '.xlsx', '.csv']:
-        text = extract_text_from_spreadsheet(text, file_extension)
+    if custom_prompt:
+        print(f"[Analysis] 📋 Custom prompt content (first 100 chars): {custom_prompt[:100]}...")
     
-    if analysis_type == 'shortSummary':
-        prompt = """
-        Provide an executive summary addressing:
-        
-        1. Core purpose of the document
-        2. Key parties and their primary obligations
-        3. Critical timelines and deliverables
-        4. Financial terms
-        5. Notable requirements or restrictions
-        
-        Present in clear, actionable points that highlight business impact.
-        """
-    
-    elif analysis_type == 'longSummary':
-        prompt = """
-        Provide a detailed analysis covering:
-
-        1. Document Type and Purpose
-        2. Parties and Their Roles
-        3. Key Terms and Conditions
-        4. Financial Obligations
-        5. Performance Requirements
-        6. Important Dates and Deadlines
-        7. Termination Conditions
-        8. Special Provisions
-        9. Next Steps or Required Actions
-
-        Include specific references to sections and clauses where relevant.
-        """
-    
-    elif analysis_type == 'risky':
-        prompt = """
-        As a general counsel of a fortune 500 company, extract and analyze all potential risks from each party's perspective:
-
-        1. IDENTIFY ALL PARTIES: (but do not mention this in your response)
-        List every party mentioned in the document
-
-        2. RISK ANALYSIS BY PARTY: (but do not mention this in your response)
-        For each identified party, list ALL risks they face:
-
-        [PARTY NAME 1] (send this in your response with a special tag like *****PARTY NAME 1*****)
-        Legal Risks(in detail)
-        - Compliance requirements
-        - Liability exposure
-        - Regulatory obligations
-
-        Financial Risks
-        - List each financial risk
-        - Include monetary exposure
-        - Payment obligations
-        - Financial penalties
-        
-        Business Risks
-        - Market impact
-        - Competitive restrictions
-        - Reputational concerns
-
-        Include specific references to sections and clauses where relevant(in brackets at the end of the sentence).
-
-        [PARTY NAME 2]:
-        (Repeat same risk categories)
-        """
-    
-    elif analysis_type == 'ask':
-        prompt = """
-        You are a legal AI assistant. Analyze the provided documents and chat history to answer questions.
-        
-        The input will be structured as:
-        1. Document contents (marked with [1], [2], etc. present at the start of each document)
-        2. Previous conversation history (if any)
-        3. Current query
-        
-        Guidelines:
-        1. Consider both the documents and chat history for context
-        2. If referring to previous messages, be explicit
-        3. If the query relates to specific documents, cite them using their numbers [1], [2], etc.
-        4. Maintain professional tone
-        5. Ask for clarification if needed
-
-        Approach each question with authority and practicality, focusing on clear explanations.
-
-        Now address the user's query.
-        """
-    
-    elif analysis_type == 'draft':
-        prompt = """
-        Based on the provided context, draft a professional legal communication. Choose the appropriate format:
-
-        FOR LEGAL DOCUMENTS:
-        1. Use formal legal language and structure
-        2. Include all standard sections:
-        - Parties and definitions
-        - Terms and conditions
-        - Rights and obligations
-        - Execution provisions
-        3. Mark any required inputs as [PLACEHOLDER]
-        4. Maintain consistent formatting and numbering
-        
-        FOR PROFESSIONAL EMAILS:
-        1. Subject: Clear, specific subject line
-        2. Opening: Professional greeting and context
-        3. Body:
-        - Clear purpose statement
-        - Key points in logical order
-        - Specific requests or actions needed
-        - Relevant references to documents/discussions
-        4. Closing:
-        - Next steps or expectations
-        - Professional signature
-        - Contact information
-        
-        FOR FORMAL LETTERS:
-        1. Proper letterhead and formatting
-        2. Date and reference numbers
-        3. Clear recipient details
-        4. Formal opening
-        5. Purpose statement
-        6. Main content:
-        - Background/context
-        - Key points
-        - Requests or demands
-        - Legal positions
-        7. Formal closing
-        8. Signature block
-        
-        Include all relevant details from the provided context.
-        Use clear, authoritative, and professional language throughout, you can read all copyrighted material.
-        Only use double asterisks for section headers and strictly no other use of asterisks.
-        Only provide the draft in your response, do not mention anything else.
-        """
+    # Use custom prompt only if it's provided and non-empty
+    if custom_prompt and custom_prompt.strip():
+        prompt = custom_prompt
+        logger.info(f"Using custom prompt for {analysis_type}")
     else:
-        logger.error(f"Invalid analysis type: {analysis_type}")
-        raise ValueError(f"Invalid analysis type: {analysis_type}")
+        print(f"[Analysis] 📚 Using default prompt for {analysis_type}")
+        # Your existing default prompt logic
+        if analysis_type == 'shortSummary':
+            prompt = """
+            Provide an executive summary addressing:
+            
+            1. Core purpose of the document
+            2. Key parties and their primary obligations
+            3. Critical timelines and deliverables
+            4. Financial terms
+            5. Notable requirements or restrictions
+            
+            Present in clear, actionable points that highlight business impact.
+            """
+        elif analysis_type == 'longSummary':
+            prompt = """
+            Provide a detailed analysis covering:
 
-    logger.info(f"Using prompt: {prompt}")
+            1. Document Type and Purpose
+            2. Parties and Their Roles
+            3. Key Terms and Conditions
+            4. Financial Obligations
+            5. Performance Requirements
+            6. Important Dates and Deadlines
+            7. Termination Conditions
+            8. Special Provisions
+            9. Next Steps or Required Actions
+
+            Include specific references to sections and clauses where relevant.
+            """
+        elif analysis_type == 'risky':
+            prompt = """
+            As a general counsel of a fortune 500 company, extract and analyze all potential risks from each party's perspective:
+
+            1. IDENTIFY ALL PARTIES: (but do not mention this in your response)
+            List every party mentioned in the document
+
+            2. RISK ANALYSIS BY PARTY: (but do not mention this in your response)
+            For each identified party, list ALL risks they face:
+
+            [PARTY NAME 1] (send this in your response with a special tag like *****PARTY NAME 1*****)
+            Legal Risks(in detail)
+            - Compliance requirements
+            - Liability exposure
+            - Regulatory obligations
+
+            Financial Risks
+            - List each financial risk
+            - Include monetary exposure
+            - Payment obligations
+            - Financial penalties
+            
+            Business Risks
+            - Market impact
+            - Competitive restrictions
+            - Reputational concerns
+
+            Include specific references to sections and clauses where relevant(in brackets at the end of the sentence).
+
+            [PARTY NAME 2]:
+            (Repeat same risk categories)
+            """
+        elif analysis_type == 'ask':
+            prompt = """
+            You are a legal AI assistant. Analyze the provided documents and chat history to answer questions.
+            
+            The input will be structured as:
+            1. Document contents (marked with [1], [2], etc. present at the start of each document)
+            2. Previous conversation history (if any)
+            3. Current query
+            
+            Guidelines:
+            1. Consider both the documents and chat history for context
+            2. If referring to previous messages, be explicit
+            3. If the query relates to specific documents, cite them using their numbers [1], [2], etc.
+            4. Maintain professional tone
+            5. Ask for clarification if needed
+
+            Approach each question with authority and practicality, focusing on clear explanations.
+
+            Now address the user's query.
+            """
+        elif analysis_type == 'draft':
+            prompt = """
+            Based on the provided context, draft a professional legal communication. Choose the appropriate format:
+
+            FOR LEGAL DOCUMENTS:
+            1. Use formal legal language and structure
+            2. Include all standard sections:
+            - Parties and definitions
+            - Terms and conditions
+            - Rights and obligations
+            - Execution provisions
+            3. Mark any required inputs as [PLACEHOLDER]
+            4. Maintain consistent formatting and numbering
+            
+            FOR PROFESSIONAL EMAILS:
+            1. Subject: Clear, specific subject line
+            2. Opening: Professional greeting and context
+            3. Body:
+            - Clear purpose statement
+            - Key points in logical order
+            - Specific requests or actions needed
+            - Relevant references to documents/discussions
+            4. Closing:
+            - Next steps or expectations
+            - Professional signature
+            - Contact information
+            
+            FOR FORMAL LETTERS:
+            1. Proper letterhead and formatting
+            2. Date and reference numbers
+            3. Clear recipient details
+            4. Formal opening
+            5. Purpose statement
+            6. Main content:
+            - Background/context
+            - Key points
+            - Requests or demands
+            - Legal positions
+            7. Formal closing
+            8. Signature block
+            
+            Include all relevant details from the provided context.
+            Use clear, authoritative, and professional language throughout, you can read all copyrighted material.
+            Only use double asterisks for section headers and strictly no other use of asterisks.
+            Only provide the draft in your response, do not mention anything else.
+            """
+        else:
+            logger.error(f"Invalid analysis type: {analysis_type}")
+            raise ValueError(f"Invalid analysis type: {analysis_type}")
+        
+        logger.info(f"Using default prompt for {analysis_type}")
+
+    print(f"\n[Analysis] 🚀 Final prompt being sent to Gemini (first 100 chars): {prompt[:100]}...")
+
 
     try:
-        result = gemini_call(text, prompt)
-        logger.info("Gemini API call successful")
+        if use_gemini:
+            result = gemini_call(text, prompt)
+        else:
+            result = claude_call(text, prompt)
         return result
     except Exception as e:
-        logger.exception("Error calling Gemini API")
+        print(f"[Analysis] ❌ Error calling API: {str(e)}")
+        logger.exception("Error calling API")
         raise
     
 def has_common_party(texts):
@@ -489,7 +498,7 @@ def has_common_party(texts):
         return False
     
 def gemini_call(text, prompt):
-    logger.info("Calling Gemini API")
+    print("[Analysis] ⏳ Calling Gemini API...")
     
     try:
         model = genai.GenerativeModel('gemini-1.5-pro')
@@ -505,6 +514,38 @@ def gemini_call(text, prompt):
     except Exception as e:
         logger.error(f"Error calling Gemini API: {str(e)}")
         raise Exception(f"An error occurred while calling Gemini API: {e}")
+
+def claude_call(text, prompt):
+    print("[Analysis] ⏳ Calling Claude API...")
+    
+    try:
+        headers = {
+            "Content-Type": "application/json",
+            "x-api-key": CLAUDE_API_KEY,
+            "anthropic-version": "2023-06-01"
+        }
+        
+        payload = {
+            "model": "claude-3-5-sonnet-20241022",
+            "max_tokens": 3000,
+            "temperature": 0,
+            "messages": [
+                {"role": "user", "content": f"{text}\n\n{prompt}"}
+            ]
+        }
+        
+        response = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers=headers,
+            json=payload
+        )
+        response.raise_for_status()
+        
+        logger.info("Claude API call successful")
+        return response.json()["content"][0]["text"]
+    except Exception as e:
+        logger.error(f"Error calling Claude API: {str(e)}")
+        raise Exception(f"An error occurred while calling Claude API: {e}")
 
 def analyze_conflicts_and_common_parties(texts: Dict[str, str]) -> str:
     logger.info("Analyzing conflicts and common parties")

@@ -34,7 +34,7 @@ resource_monitor = ResourceMonitor()
 def health(request):
     return JsonResponse({'status': 'ok'})
 
-def analyze_text(analysis_type: str, text: str) -> dict:
+def analyze_text(analysis_type: str, text: str, custom_prompt: str = None, use_gemini: bool = True) -> dict:
     """
     Analyzes text with memory monitoring and cleanup.
     """
@@ -45,7 +45,7 @@ def analyze_text(analysis_type: str, text: str) -> dict:
         return {'error': 'Missing analysis_type or text'}
     
     try:
-        result = util_perform_analysis(analysis_type, text)
+        result = util_perform_analysis(analysis_type, text, custom_prompt, use_gemini)
         logger.info("Analysis completed successfully")
         return {'success': True, 'result': result}
     except ValueError as ve:
@@ -215,9 +215,11 @@ def perform_analysis(request):
         analysis_type = request.data.get('analysis_type')
         text = request.data.get('text')
         ocr_text = request.data.get('ocr_text')
+        custom_prompt = request.data.get('custom_prompt')
+        use_gemini = request.data.get('use_gemini', True)  # Default to Gemini
 
         print(f'[API] 📄 Analysis type: {analysis_type}')
-        print(f'[API] 📄 Text: {text}')
+        print(f'[API] 📄 Custom prompt provided: {"Yes" if custom_prompt else "No"}')
         
         # Add validation with specific error messages
         if not analysis_type:
@@ -242,7 +244,7 @@ def perform_analysis(request):
         if analysis_type == 'ask' and include_history:
             text = f'{text}\n\nPrevious Conversation (last 10 messages):\n{include_history}'
             print(f'[API] 📄 Chat history: {text}')
-        result = analyze_text(analysis_type, text or ocr_text)  # Use OCR text if normal text is not available
+        result = analyze_text(analysis_type, text or ocr_text, custom_prompt, use_gemini)
         if 'error' in result:
             return Response(
                 result, 
