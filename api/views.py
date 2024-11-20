@@ -6,7 +6,7 @@ import time
 import random
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.http import JsonResponse
 from .utils import (
@@ -17,6 +17,11 @@ from .utils import (
     analyze_conflicts_and_common_parties,
     ResourceMonitor
 )
+from rest_framework import status
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import UserSerializer, RegisterSerializer, AcceptTermsSerializer
+from .models import Document, User
 
 logger = logging.getLogger(__name__)
 
@@ -108,17 +113,56 @@ def get_pdf_data(file_path: str, extracted_text: str) -> dict:
 
 @csrf_exempt
 @api_view(['POST'])
+@permission_classes([AllowAny])
+def register(request):
+    serializer = RegisterSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+        return Response({
+            "user": UserSerializer(user).data,
+            "message": "User created successfully"
+        }, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def upload_file(request):
     """
     Handles file uploads with memory-efficient processing.
     """
-    resource_monitor.log_memory("Starting file upload")
+    logger.info(f"Upload request from user: {request.user.username} (is_root: {request.user.is_root})")
+    logger.info(f"User organization: {request.user.organization}")
     
-    if 'file' not in request.FILES:
-        logger.warning("No file uploaded in the request")
-        return Response({'error': 'No file uploaded'}, status=400)
+    if not request.user.organization and not request.user.is_root:
+        logger.warning(f"No organization associated with user {request.user.username}")
+        return Response({
+            'error': 'No organization associated',
+            'details': {
+                'is_root': request.user.is_root,
+                'has_organization': bool(request.user.organization)
+            }
+        }, status=400)
     
-    file = request.FILES['file']
+    file = request.FILES.get('file')
+    if not file:
+        return Response({'error': 'No file provided'}, status=400)
+    
+    # Modified organization handling
+    if request.user.is_root:
+        organization = request.data.get('organization')  # Optional for root
+    else:
+        organization = request.user.organization  # Required for non-root
+        if not organization:
+            return Response({'error': 'No organization associated'}, status=400)
+    
+    document = Document.objects.create(
+        title=file.name,
+        file=file,
+        organization=organization,  # Can be None for root user
+        uploaded_by=request.user
+    )
+    
     file_extension = request.POST.get('file_extension', '')
     logger.info(f"Received file: {file.name} with extension {file_extension}")
     
@@ -157,7 +201,9 @@ def upload_file(request):
             logger.info(f"Removed temporary file: {file_path}")
         resource_monitor.force_cleanup()
 
+@csrf_exempt
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def perform_analysis(request):
     """
     Performs text analysis with memory management.
@@ -168,14 +214,35 @@ def perform_analysis(request):
     try:
         analysis_type = request.data.get('analysis_type')
         text = request.data.get('text')
+        ocr_text = request.data.get('ocr_text')
+
+        print(f'[API] 📄 Analysis type: {analysis_type}')
+        print(f'[API] 📄 Text: {text}')
+        
+        # Add validation with specific error messages
+        if not analysis_type:
+            logger.warning("Missing analysis_type")
+            return Response({'error': 'Please specify the type of analysis to perform'}, status=400)
+            
+        if not text and not ocr_text:
+            logger.warning("No text or OCR text found to analyze")
+            return Response({'error': 'No text found to analyze. Please provide text content or upload a document.'}, status=400)
+            
+        if analysis_type == 'ocr' and not ocr_text:
+            logger.warning("No OCR text found for OCR analysis")
+            return Response({'error': 'No OCR text found. Please upload a document for OCR analysis.'}, status=400)
+            
+        if analysis_type != 'ocr' and not text:
+            logger.warning("No normal text found for non-OCR analysis")
+            return Response({'error': 'No text content found. Please provide text for analysis.'}, status=400)
+            
         include_history = request.data.get('include_history', False)
         
         # Parse the input for chat analysis
         if analysis_type == 'ask' and include_history:
             text = f'{text}\n\nPrevious Conversation (last 10 messages):\n{include_history}'
             print(f'[API] 📄 Chat history: {text}')
-        
-        result = analyze_text(analysis_type, text)
+        result = analyze_text(analysis_type, text or ocr_text)  # Use OCR text if normal text is not available
         if 'error' in result:
             return Response(
                 result, 
@@ -187,7 +254,9 @@ def perform_analysis(request):
         del text
         resource_monitor.force_cleanup()
 
+@csrf_exempt
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def perform_conflict_check(request):
     """
     Performs conflict check with memory management.
@@ -217,3 +286,40 @@ def perform_conflict_check(request):
             del texts[key]
         del texts
         resource_monitor.force_cleanup()
+
+def get_organization_filter(user):
+    """Helper to get organization filter based on user type"""
+    if user.is_root:
+        return {}  # No filter for root users
+    return {'organization': user.organization}
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_profile(request):
+    serializer = UserSerializer(request.user)
+    return Response(serializer.data)
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    def post(self, request, *args, **kwargs):
+        logger.info(f"Login attempt with username: {request.data.get('username')}")
+        response = super().post(request, *args, **kwargs)
+        logger.info(f"Login response status: {response.status_code}")
+        return response
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def accept_terms(request):
+    user = request.user
+    
+    if request.method == 'GET':
+        print(f"[API] Checking terms status for user {user.username}: {user.accepted_terms}")  # Add logging
+        return Response({
+            'accepted_terms': user.accepted_terms if hasattr(user, 'accepted_terms') else False
+        })
+    
+    elif request.method == 'PATCH':
+        serializer = AcceptTermsSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

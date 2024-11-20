@@ -101,8 +101,10 @@ class RAGPipeline:
         try:
             response = requests.post(url, json=payload)
             response.raise_for_status()
+            print(response.json())
             return response.json()
         except Exception as e:
+            print(response.json())
             logger.error(f"Vision API error: {e}")
             raise
         finally:
@@ -481,7 +483,6 @@ def has_common_party(texts):
     try:
         result = gemini_call("", prompt)
         logger.info(f"Gemini API response for common party check: {result}")
-        print(result.strip().lower())
         return result.strip().lower() == 'yes'
     except Exception as e:
         logger.exception("Error checking for common party")
