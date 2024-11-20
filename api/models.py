@@ -13,6 +13,7 @@ class User(AbstractUser):
     email = models.EmailField(unique=True)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
     is_root = models.BooleanField(default=False)
+    accepted_terms = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
