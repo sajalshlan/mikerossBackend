@@ -215,10 +215,6 @@ def perform_analysis(request):
         analysis_type = request.data.get('analysis_type')
         text = request.data.get('text')
         ocr_text = request.data.get('ocr_text')
-
-        print(f'[API] 📄 Analysis type: {analysis_type}')
-        print(f'[API] 📄 Text: {text}')
-        
         # Add validation with specific error messages
         if not analysis_type:
             logger.warning("Missing analysis_type")
@@ -241,7 +237,6 @@ def perform_analysis(request):
         # Parse the input for chat analysis
         if analysis_type == 'ask' and include_history:
             text = f'{text}\n\nPrevious Conversation (last 10 messages):\n{include_history}'
-            print(f'[API] 📄 Chat history: {text}')
         result = analyze_text(analysis_type, text or ocr_text)  # Use OCR text if normal text is not available
         if 'error' in result:
             return Response(
@@ -312,7 +307,6 @@ def accept_terms(request):
     user = request.user
     
     if request.method == 'GET':
-        print(f"[API] Checking terms status for user {user.username}: {user.accepted_terms}")  # Add logging
         return Response({
             'accepted_terms': user.accepted_terms if hasattr(user, 'accepted_terms') else False
         })
