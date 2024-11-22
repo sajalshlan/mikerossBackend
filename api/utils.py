@@ -351,7 +351,7 @@ def classify_document(text: str) -> str:
         logger.error(f"Error in document classification: {e}")
         return None
 
-def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
+def perform_analysis(analysis_type: str, text: str, custom_prompt: str = None, use_gemini: bool = True) -> str:
     """
     Modified to include document classification for certain analysis types
     """
