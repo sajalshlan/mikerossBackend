@@ -15,7 +15,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'organization', 'organization_details', 'is_root')
+        fields = ('id', 'username', 'email', 'organization', 'organization_details', 'is_root', 'accepted_terms')
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True)
@@ -37,3 +37,8 @@ class RegisterSerializer(serializers.ModelSerializer):
             is_superuser=is_root  # Give full permissions to root users
         )
         return user
+
+class AcceptTermsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['accepted_terms']

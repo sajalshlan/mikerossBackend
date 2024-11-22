@@ -20,8 +20,8 @@ from .utils import (
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .serializers import UserSerializer, RegisterSerializer
-from .models import Document
+from .serializers import UserSerializer, RegisterSerializer, AcceptTermsSerializer
+from .models import Document, User
 
 logger = logging.getLogger(__name__)
 
@@ -307,3 +307,20 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         response = super().post(request, *args, **kwargs)
         logger.info(f"Login response status: {response.status_code}")
         return response
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def accept_terms(request):
+    user = request.user
+    
+    if request.method == 'GET':
+        return Response({
+            'accepted_terms': user.accepted_terms if hasattr(user, 'accepted_terms') else False
+        })
+    
+    elif request.method == 'PATCH':
+        serializer = AcceptTermsSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

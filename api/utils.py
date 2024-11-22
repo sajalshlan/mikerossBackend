@@ -17,6 +17,19 @@ from PIL import Image
 from typing import List, Tuple, Dict, Optional
 import pandas as pd
 import time
+from .prompts import (
+    DOCUMENT_TYPES,
+    GENERAL_SHORT_SUMMARY_PROMPT,
+    GENERAL_LONG_SUMMARY_PROMPT,
+    GENERAL_RISK_ANALYSIS_PROMPT,
+    SHORT_SUMMARY_PROMPTS,
+    RISK_ANALYSIS_PROMPTS,
+    CONFLICT_ANALYSIS_PROMPT,
+    LONG_SUMMARY_PROMPTS,
+    DRAFT_PROMPT,
+    ASK_PROMPT
+)
+import anthropic  # Add this import at the top
 
 logger = logging.getLogger(__name__)
 load_dotenv()
@@ -26,6 +39,10 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GOOGLE_VISION_API_KEY = os.getenv("GOOGLE_VISION_API_KEY") 
 
 genai.configure(api_key=GEMINI_API_KEY)
+
+# Add these at the top level with other constants
+
+
 
 class ResourceMonitor:
     def __init__(self):
@@ -103,7 +120,6 @@ class RAGPipeline:
             response.raise_for_status()
             return response.json()
         except Exception as e:
-            print(response.json())
             logger.error(f"Vision API error: {e}")
             raise
         finally:
@@ -313,17 +329,124 @@ def extract_text_from_spreadsheet(file_content: bytes, file_extension: str) -> s
         del df
         gc.collect()
         
-def perform_analysis(analysis_type: str, text: str, custom_prompt: str = None, use_gemini: bool = True):
+def classify_document(text: str) -> str:
+    classification_prompt = """
+    You are a legal document classifier. Based on the document provided, classify it into ONE of the following categories:
+    
+    {}
+    
+    Respond ONLY with the exact category name from the list above. If the document doesn't match any category exactly, 
+    choose the closest match. Provide ONLY the category name, no other text or explanation.
+    """.format("\n".join(DOCUMENT_TYPES))
+    
+    try:
+        result = claude_call(text, classification_prompt)
+        classified_type = result.strip()
+        if classified_type in DOCUMENT_TYPES:
+            return classified_type
+        # If response doesn't match exactly, return None to trigger general prompt
+        logger.warning(f"Invalid classification result: {classified_type}")
+        return None
+    except Exception as e:
+        logger.error(f"Error in document classification: {e}")
+        return None
+
+def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
+    """
+    Modified to include document classification for certain analysis types
+    """
     logger.info(f"Performing analysis: {analysis_type}")
     print(f"[Analysis] 🔍 Custom prompt provided: {bool(custom_prompt)}")
     
     if custom_prompt:
         print(f"[Analysis] 📋 Custom prompt content (first 100 chars): {custom_prompt[:100]}...")
     
-    # Use custom prompt only if it's provided and non-empty
-    if custom_prompt and custom_prompt.strip():
-        prompt = custom_prompt
-        logger.info(f"Using custom prompt for {analysis_type}")
+    if analysis_type == 'shortSummary':
+        # First classify the document
+        doc_type = classify_document(text)
+        print(f"short summary: classified into {doc_type}")
+        logger.info(f"Document classified as: {doc_type}")
+        print(f"short summary: {SHORT_SUMMARY_PROMPTS[doc_type]}")
+        
+        if doc_type and doc_type in SHORT_SUMMARY_PROMPTS:
+            prompt = f"""
+            Provide a comprehensive summary of the document. 
+            {SHORT_SUMMARY_PROMPTS[doc_type]}
+            Do not mention about the framework. Follow the framework strictly.
+            """
+        else:
+            logger.info("Using general summary prompt for short summary")
+            prompt = GENERAL_SHORT_SUMMARY_PROMPT
+    
+    elif analysis_type == 'longSummary':
+        doc_type = classify_document(text[:100])
+        print(f"long summary: classified into {doc_type}")
+        logger.info(f"Document classified as: {doc_type}")
+
+        if doc_type and doc_type in LONG_SUMMARY_PROMPTS:
+            prompt = f"""
+            Provide a comprehensive summary of the document. 
+            {LONG_SUMMARY_PROMPTS[doc_type]}
+            Do not mention about the framework. Follow the framework strictly.
+            """
+        else:
+            logger.info("Using general summary prompt for long summary")
+            prompt = GENERAL_LONG_SUMMARY_PROMPT
+    
+    elif analysis_type == 'risky':
+        doc_type = classify_document(text[:100])
+        print(f"risky: classified into {doc_type}")
+
+        if doc_type and doc_type in RISK_ANALYSIS_PROMPTS:
+            logger.info(f"Document classified as: {doc_type}")
+            risk_content = RISK_ANALYSIS_PROMPTS.get(doc_type, RISK_ANALYSIS_PROMPTS)
+        else:
+            logger.info("Using general risk analysis prompt")
+            risk_content = GENERAL_RISK_ANALYSIS_PROMPT
+        
+        prompt = f"""
+        You are a General Counsel of a Fortune 500 company with over 20 years of experience. 
+        First, thoroughly analyze this {doc_type} for all potential risks using the following framework:
+        Structure your response in the following specific format:
+
+        OUTPUT STRUCTURE:
+        1. First, identify all parties silently (do not list them in the output)
+        2. For each party, present the risks they are exposed to using this format.
+        3. For each risk, provide a detailed analysis of the impact on the party's interests.
+        4. Keep each party's analysis separate, independent and distinct from the other parties'.
+        5. Give fresh numbers to each party's analysis while formatting.
+
+        *****[PARTY NAME]*****
+        PERSPECTIVE: Brief overview of this party's position and key objectives in the agreement
+
+        **RISK EXPOSURE**
+        
+        {risk_content}
+
+
+        [Repeat for each party]
+
+        IMPORTANT FORMATTING RULES:
+        - Use ***** only for party names
+        - For section headers, use **
+        - Replace the A, B, C with the **
+        - Include specific clause references in [square brackets]
+        - Maintain professional, clear language
+        """
+
+        try:
+            result = gemini_call(text, prompt)
+            logger.info("Risk analysis completed successfully")
+            return result
+        except Exception as e:
+            logger.exception("Error in risk analysis")
+            raise
+    
+    elif analysis_type == 'ask':
+        prompt = ASK_PROMPT
+    
+    elif analysis_type == 'draft':
+        prompt = DRAFT_PROMPT
     else:
         print(f"[Analysis] 📚 Using default prompt for {analysis_type}")
         # Your existing default prompt logic
@@ -500,13 +623,17 @@ def has_common_party(texts):
 def gemini_call(text, prompt):
     print("[Analysis] ⏳ Calling Gemini API...")
     
+    system_prompt = """You are a highly experienced General Counsel of a Fortune 500 company with over 20 years of experience in corporate law."""
+
     try:
         model = genai.GenerativeModel('gemini-1.5-pro')
         response = model.generate_content(
-            [text, prompt],
+            [system_prompt, text, prompt],
             generation_config=genai.types.GenerationConfig(
-                temperature=0,
-                max_output_tokens=3000,
+                temperature=0.1,  # Slightly increased for more natural language while maintaining precision
+                max_output_tokens=4000,  # Increased token limit for more comprehensive responses
+                top_p=0.8,  # Added for better response quality
+                top_k=40,  # Added for better response diversity while maintaining relevance
             )
         )
         logger.info("Gemini API call successful")
@@ -550,46 +677,7 @@ def claude_call(text, prompt):
 def analyze_conflicts_and_common_parties(texts: Dict[str, str]) -> str:
     logger.info("Analyzing conflicts and common parties")
     
-    prompt = """
-    Analyze the following documents for two tasks:
-    1. Determine if there is at least one common party present in all documents.
-    2. If there is at least one common party, perform a conflict check across all documents.
-
-    For each document, identify any clauses or terms that may conflict with clauses or terms in the other documents.
-
-    Provide your analysis in the following format:
-    Common Party Check:
-    [Yes/No] - There [is/are] [a common party/no common parties] involved across the selected documents.
-
-    If the answer is Yes, continue with:
-
-    (IMPORTANT NOTE: If yes, start your response from here)
-
-    Parties Involved: (send this in your response with a special tag like **Parties Involved**)
-    - [Name of common party 1]
-    - [Name of common party 2]
-    - ...
-
-
-    Conflict Analysis:
-    Document: [Filename1](send this in your response with a special tag like **Document Name**)
-    Conflicts:
-    1. Clause [X] conflicts with [Filename2], Clause [Y]:
-       - [Brief explanation of the conflict]
-    2. ...
-
-    Document: [Filename2](send this in your response with a special tag like **Document Name**)
-    Conflicts:
-    1. ...
-
-    If no conflicts are found for a document, state "No conflicts found."
-
-    If there is no common party, only provide the Common Party Check result.
-
-    Focus on significant conflicts that could impact the legal or business relationship between the parties involved.
-
-    Documents:
-    """
+    prompt = CONFLICT_ANALYSIS_PROMPT
 
     for filename, content in texts.items():
         prompt += f"\n\nFilename: {filename}\nContent (truncated):\n{content}"
