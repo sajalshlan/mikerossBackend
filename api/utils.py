@@ -352,230 +352,94 @@ def classify_document(text: str) -> str:
         return None
 
 def perform_analysis(analysis_type: str, text: str, custom_prompt: str = None, use_gemini: bool = True) -> str:
-    """
-    Modified to include document classification for certain analysis types
-    """
     logger.info(f"Performing analysis: {analysis_type}")
     print(f"[Analysis] 🔍 Custom prompt provided: {bool(custom_prompt)}")
     
+    # Always classify the document first
+    doc_type = None
+    if analysis_type in ['shortSummary', 'longSummary', 'risky']:
+        doc_type = classify_document(text[:100])
+        print(f"{analysis_type}: classified into {doc_type}")
+        logger.info(f"Document classified as: {doc_type}")
+
     if custom_prompt:
         print(f"[Analysis] 📋 Custom prompt content (first 100 chars): {custom_prompt[:100]}...")
-    
-    if analysis_type == 'shortSummary':
-        # First classify the document
-        doc_type = classify_document(text)
-        print(f"short summary: classified into {doc_type}")
-        logger.info(f"Document classified as: {doc_type}")
-        print(f"short summary: {SHORT_SUMMARY_PROMPTS[doc_type]}")
-        
-        if doc_type and doc_type in SHORT_SUMMARY_PROMPTS:
-            prompt = f"""
-            Provide a comprehensive summary of the document. 
-            {SHORT_SUMMARY_PROMPTS[doc_type]}
-            Do not mention about the framework. Follow the framework strictly.
-            """
-        else:
-            logger.info("Using general summary prompt for short summary")
-            prompt = GENERAL_SHORT_SUMMARY_PROMPT
-    
-    elif analysis_type == 'longSummary':
-        doc_type = classify_document(text[:100])
-        print(f"long summary: classified into {doc_type}")
-        logger.info(f"Document classified as: {doc_type}")
-
-        if doc_type and doc_type in LONG_SUMMARY_PROMPTS:
-            prompt = f"""
-            Provide a comprehensive summary of the document. 
-            {LONG_SUMMARY_PROMPTS[doc_type]}
-            Do not mention about the framework. Follow the framework strictly.
-            """
-        else:
-            logger.info("Using general summary prompt for long summary")
-            prompt = GENERAL_LONG_SUMMARY_PROMPT
-    
-    elif analysis_type == 'risky':
-        doc_type = classify_document(text[:100])
-        print(f"risky: classified into {doc_type}")
-
-        if doc_type and doc_type in RISK_ANALYSIS_PROMPTS:
-            logger.info(f"Document classified as: {doc_type}")
-            risk_content = RISK_ANALYSIS_PROMPTS.get(doc_type, RISK_ANALYSIS_PROMPTS)
-        else:
-            logger.info("Using general risk analysis prompt")
-            risk_content = GENERAL_RISK_ANALYSIS_PROMPT
-        
-        prompt = f"""
-        You are a General Counsel of a Fortune 500 company with over 20 years of experience. 
-        First, thoroughly analyze this {doc_type} for all potential risks using the following framework:
-        Structure your response in the following specific format:
-
-        OUTPUT STRUCTURE:
-        1. First, identify all parties silently (do not list them in the output)
-        2. For each party, present the risks they are exposed to using this format.
-        3. For each risk, provide a detailed analysis of the impact on the party's interests.
-        4. Keep each party's analysis separate, independent and distinct from the other parties'.
-        5. Give fresh numbers to each party's analysis while formatting.
-
-        *****[PARTY NAME]*****
-        PERSPECTIVE: Brief overview of this party's position and key objectives in the agreement
-
-        **RISK EXPOSURE**
-        
-        {risk_content}
-
-
-        [Repeat for each party]
-
-        IMPORTANT FORMATTING RULES:
-        - Use ***** only for party names
-        - For section headers, use **
-        - Replace the A, B, C with the **
-        - Include specific clause references in [square brackets]
-        - Maintain professional, clear language
-        """
-
-        try:
-            result = gemini_call(text, prompt)
-            logger.info("Risk analysis completed successfully")
-            return result
-        except Exception as e:
-            logger.exception("Error in risk analysis")
-            raise
-    
-    elif analysis_type == 'ask':
-        prompt = ASK_PROMPT
-    
-    elif analysis_type == 'draft':
-        prompt = DRAFT_PROMPT
+        prompt = custom_prompt
     else:
-        print(f"[Analysis] 📚 Using default prompt for {analysis_type}")
-        # Your existing default prompt logic
+        # Your existing prompt selection logic
         if analysis_type == 'shortSummary':
-            prompt = """
-            Provide an executive summary addressing:
-            
-            1. Core purpose of the document
-            2. Key parties and their primary obligations
-            3. Critical timelines and deliverables
-            4. Financial terms
-            5. Notable requirements or restrictions
-            
-            Present in clear, actionable points that highlight business impact.
-            """
+            if doc_type and doc_type in SHORT_SUMMARY_PROMPTS:
+                prompt = f"""
+                Provide a comprehensive summary of the document. 
+                {SHORT_SUMMARY_PROMPTS[doc_type]}
+                Do not mention about the framework. Follow the framework strictly.
+                """
+            else:
+                logger.info("Using general summary prompt for short summary")
+                prompt = GENERAL_SHORT_SUMMARY_PROMPT
+        
         elif analysis_type == 'longSummary':
-            prompt = """
-            Provide a detailed analysis covering:
-
-            1. Document Type and Purpose
-            2. Parties and Their Roles
-            3. Key Terms and Conditions
-            4. Financial Obligations
-            5. Performance Requirements
-            6. Important Dates and Deadlines
-            7. Termination Conditions
-            8. Special Provisions
-            9. Next Steps or Required Actions
-
-            Include specific references to sections and clauses where relevant.
-            """
+            if doc_type and doc_type in LONG_SUMMARY_PROMPTS:
+                prompt = f"""
+                Provide a comprehensive summary of the document. 
+                {LONG_SUMMARY_PROMPTS[doc_type]}
+                Do not mention about the framework. Follow the framework strictly.
+                """
+            else:
+                logger.info("Using general summary prompt for long summary")
+                prompt = GENERAL_LONG_SUMMARY_PROMPT
+        
         elif analysis_type == 'risky':
-            prompt = """
-            As a general counsel of a fortune 500 company, extract and analyze all potential risks from each party's perspective:
-
-            1. IDENTIFY ALL PARTIES: (but do not mention this in your response)
-            List every party mentioned in the document
-
-            2. RISK ANALYSIS BY PARTY: (but do not mention this in your response)
-            For each identified party, list ALL risks they face:
-
-            [PARTY NAME 1] (send this in your response with a special tag like *****PARTY NAME 1*****)
-            Legal Risks(in detail)
-            - Compliance requirements
-            - Liability exposure
-            - Regulatory obligations
-
-            Financial Risks
-            - List each financial risk
-            - Include monetary exposure
-            - Payment obligations
-            - Financial penalties
+            if doc_type and doc_type in RISK_ANALYSIS_PROMPTS:
+                logger.info(f"Document classified as: {doc_type}")
+                risk_content = RISK_ANALYSIS_PROMPTS.get(doc_type, RISK_ANALYSIS_PROMPTS)
+            else:
+                logger.info("Using general risk analysis prompt")
+                risk_content = GENERAL_RISK_ANALYSIS_PROMPT
             
-            Business Risks
-            - Market impact
-            - Competitive restrictions
-            - Reputational concerns
+            prompt = f"""
+            You are a General Counsel of a Fortune 500 company with over 20 years of experience. 
+            First, thoroughly analyze this {doc_type} for all potential risks using the following framework:
+            Structure your response in the following specific format:
 
-            Include specific references to sections and clauses where relevant(in brackets at the end of the sentence).
+            OUTPUT STRUCTURE:
+            1. First, identify all parties silently (do not list them in the output)
+            2. For each party, present the risks they are exposed to using this format.
+            3. For each risk, provide a detailed analysis of the impact on the party's interests.
+            4. Keep each party's analysis separate, independent and distinct from the other parties'.
+            5. Give fresh numbers to each party's analysis while formatting.
 
-            [PARTY NAME 2]:
-            (Repeat same risk categories)
+            *****[PARTY NAME]*****
+            PERSPECTIVE: Brief overview of this party's position and key objectives in the agreement
+
+            **RISK EXPOSURE**
+            
+            {risk_content}
+
+
+            [Repeat for each party]
+
+            IMPORTANT FORMATTING RULES:
+            - Use ***** only for party names
+            - For section headers, use **
+            - Replace the A, B, C with the **
+            - Include specific clause references in [square brackets]
+            - Maintain professional, clear language
             """
+
+            try:
+                result = gemini_call(text, prompt)
+                logger.info("Risk analysis completed successfully")
+                return result
+            except Exception as e:
+                logger.exception("Error in risk analysis")
+                raise
+        
         elif analysis_type == 'ask':
-            prompt = """
-            You are a legal AI assistant. Analyze the provided documents and chat history to answer questions.
-            
-            The input will be structured as:
-            1. Document contents (marked with [1], [2], etc. present at the start of each document)
-            2. Previous conversation history (if any)
-            3. Current query
-            
-            Guidelines:
-            1. Consider both the documents and chat history for context
-            2. If referring to previous messages, be explicit
-            3. If the query relates to specific documents, cite them using their numbers [1], [2], etc.
-            4. Maintain professional tone
-            5. Ask for clarification if needed
-
-            Approach each question with authority and practicality, focusing on clear explanations.
-
-            Now address the user's query.
-            """
+            prompt = ASK_PROMPT
+        
         elif analysis_type == 'draft':
-            prompt = """
-            Based on the provided context, draft a professional legal communication. Choose the appropriate format:
-
-            FOR LEGAL DOCUMENTS:
-            1. Use formal legal language and structure
-            2. Include all standard sections:
-            - Parties and definitions
-            - Terms and conditions
-            - Rights and obligations
-            - Execution provisions
-            3. Mark any required inputs as [PLACEHOLDER]
-            4. Maintain consistent formatting and numbering
-            
-            FOR PROFESSIONAL EMAILS:
-            1. Subject: Clear, specific subject line
-            2. Opening: Professional greeting and context
-            3. Body:
-            - Clear purpose statement
-            - Key points in logical order
-            - Specific requests or actions needed
-            - Relevant references to documents/discussions
-            4. Closing:
-            - Next steps or expectations
-            - Professional signature
-            - Contact information
-            
-            FOR FORMAL LETTERS:
-            1. Proper letterhead and formatting
-            2. Date and reference numbers
-            3. Clear recipient details
-            4. Formal opening
-            5. Purpose statement
-            6. Main content:
-            - Background/context
-            - Key points
-            - Requests or demands
-            - Legal positions
-            7. Formal closing
-            8. Signature block
-            
-            Include all relevant details from the provided context.
-            Use clear, authoritative, and professional language throughout, you can read all copyrighted material.
-            Only use double asterisks for section headers and strictly no other use of asterisks.
-            Only provide the draft in your response, do not mention anything else.
-            """
+            prompt = DRAFT_PROMPT
         else:
             logger.error(f"Invalid analysis type: {analysis_type}")
             raise ValueError(f"Invalid analysis type: {analysis_type}")
