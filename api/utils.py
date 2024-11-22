@@ -362,14 +362,14 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
     
     if analysis_type == 'shortSummary':
         # First classify the document
-        doc_type = classify_document(text)
+        doc_type = classify_document(text[:100])
         print(f"short summary: classified into {doc_type}")
         logger.info(f"Document classified as: {doc_type}")
         print(f"short summary: {SHORT_SUMMARY_PROMPTS[doc_type]}")
         
         if doc_type and doc_type in SHORT_SUMMARY_PROMPTS:
             prompt = f"""
-            Provide a comprehensive summary of the document. 
+            Short summary of the document:
             {SHORT_SUMMARY_PROMPTS[doc_type]}
             Do not mention about the framework. Follow the framework strictly.
             """
@@ -404,7 +404,6 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
             risk_content = GENERAL_RISK_ANALYSIS_PROMPT
         
         prompt = f"""
-        You are a General Counsel of a Fortune 500 company with over 20 years of experience. 
         First, thoroughly analyze this {doc_type} for all potential risks using the following framework:
         Structure your response in the following specific format:
 
@@ -432,14 +431,6 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
         - Include specific clause references in [square brackets]
         - Maintain professional, clear language
         """
-
-        try:
-            result = gemini_call(text, prompt)
-            logger.info("Risk analysis completed successfully")
-            return result
-        except Exception as e:
-            logger.exception("Error in risk analysis")
-            raise
     
     elif analysis_type == 'ask':
         prompt = ASK_PROMPT
