@@ -351,22 +351,27 @@ def classify_document(text: str) -> str:
         logger.error(f"Error in document classification: {e}")
         return None
 
-def perform_analysis(analysis_type: str, text: str, custom_prompt: str = None, use_gemini: bool = True) -> str:
+def perform_analysis(analysis_type: str, text: str, custom_prompt: str = None, use_gemini: bool = True, document_type: str = None) -> str:
     logger.info(f"Performing analysis: {analysis_type}")
     print(f"[Analysis] 🔍 Custom prompt provided: {bool(custom_prompt)}")
+    print(f"[Analysis] 📄 Document type provided: {document_type}")
     
-    # Always classify the document first
-    doc_type = None
-    if analysis_type in ['shortSummary', 'longSummary', 'risky']:
+    # Use provided document type if available, otherwise classify
+    doc_type = document_type
+    if not doc_type and analysis_type in ['shortSummary', 'longSummary', 'risky']:
         doc_type = classify_document(text[:100])
         print(f"{analysis_type}: classified into {doc_type}")
         logger.info(f"Document classified as: {doc_type}")
 
     if custom_prompt:
         print(f"[Analysis] 📋 Custom prompt content (first 100 chars): {custom_prompt[:100]}...")
-        prompt = custom_prompt
+        # Insert document type into custom prompt if available
+        if doc_type:
+            prompt = custom_prompt.replace("{doc_type}", doc_type)
+        else:
+            prompt = custom_prompt
     else:
-        # Your existing prompt selection logic
+        # Your existing prompt selection logic with doc_type
         if analysis_type == 'shortSummary':
             if doc_type and doc_type in SHORT_SUMMARY_PROMPTS:
                 prompt = f"""
