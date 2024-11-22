@@ -317,3 +317,41 @@ def accept_terms(request):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def explain_text(request):
+    """
+    Explains a selected portion of text in detail.
+    """
+    resource_monitor.log_memory("Starting explanation request")
+    
+    try:
+        selected_text = request.data.get('selectedText')
+        context_text = request.data.get('contextText')
+        
+        if not selected_text:
+            return Response({'error': 'No text selected for explanation'}, status=400)
+            
+        prompt = f"""
+        You are provided with a document and a section of text from that document.
+        Your task is to explain the selected text in more detail.
+        
+        Document Context:
+        {context_text} 
+        
+        Selected Text to Explain:
+        {selected_text}
+        
+        Provide a to the point and very concise explanation of the selected text keeping in mind the context of the document.
+        """
+        
+        result = util_perform_analysis('explain', prompt)
+        return Response(result)
+        
+    except Exception as e:
+        logger.exception("Error generating explanation")
+        return Response({'error': str(e)}, status=500)
+    finally:
+        resource_monitor.force_cleanup()

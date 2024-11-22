@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from .views import CustomTokenObtainPairView
+from .views import CustomTokenObtainPairView, explain_text
 
 urlpatterns = [
     path('health/', views.health, name='health'),
@@ -13,4 +13,5 @@ urlpatterns = [
     path('register/', views.register, name='register'),
     path('profile/', views.get_user_profile, name='user_profile'),
     path('accept_terms/', views.accept_terms, name='accept_terms'),
+    path('explain_text/', explain_text, name='explain_text'),
 ]

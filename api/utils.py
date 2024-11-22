@@ -360,7 +360,11 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
     if file_extension in ['.xls', '.xlsx', '.csv']:
         text = extract_text_from_spreadsheet(text, file_extension)
     
-    if analysis_type == 'shortSummary':
+    if analysis_type == 'explain':
+        prompt = text 
+        logger.info("Using explanation prompt")
+    
+    elif analysis_type == 'shortSummary':
         # First classify the document
         doc_type = classify_document(text[:100])
         print(f"short summary: classified into {doc_type}")
@@ -444,11 +448,17 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
     logger.info(f"Using prompt: {prompt}")
 
     try:
-        result = gemini_call(text, prompt)
-        logger.info("Gemini API call successful")
+        # For explanations, we'll use Claude for more nuanced responses
+        if analysis_type == 'explain':
+            result = claude_call_explanation(prompt)
+        else:
+            result = gemini_call(text, prompt)
+        
+        logger.info("API call successful")
+        print(f"result: {result}")
         return result
     except Exception as e:
-        logger.exception("Error calling Gemini API")
+        logger.exception(f"Error calling API for {analysis_type}")
         raise
     
 def has_common_party(texts):
@@ -514,6 +524,29 @@ def claude_call(text, prompt):
                 {
                     "role": "user",
                     "content": f"{prompt}\n\nDocument:\n{text}"
+                }
+            ]
+        )
+        logger.info("Claude API call successful")
+        return response.content[0].text
+    except Exception as e:
+        logger.error(f"Error calling Claude API: {str(e)}")
+        raise Exception(f"An error occurred while calling Claude API: {e}")
+    
+def claude_call_explanation(prompt):
+    logger.info("Calling Claude API")
+    
+    try:
+        client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+        print("claude call")
+        response = client.messages.create(
+            model="claude-3-5-sonnet-latest",
+            max_tokens=1000,
+            temperature=0.9,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
                 }
             ]
         )
