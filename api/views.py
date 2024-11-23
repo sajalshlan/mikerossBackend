@@ -8,7 +8,7 @@ from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from .utils import (
     RAGPipeline, 
     extract_text_from_file, 
@@ -22,6 +22,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import UserSerializer, RegisterSerializer, AcceptTermsSerializer
 from .models import Document, User
+from pdf2docx import Converter
+import tempfile
 
 logger = logging.getLogger(__name__)
 
@@ -355,3 +357,29 @@ def explain_text(request):
         return Response({'error': str(e)}, status=500)
     finally:
         resource_monitor.force_cleanup()
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def convert_pdf_to_docx(request):
+    file = request.FILES.get('file')
+    if not file:
+        return JsonResponse({'error': 'No file provided'}, status=400)
+
+    # Save the PDF file temporarily
+    pdf_path = f'/tmp/{file.name}'
+    with open(pdf_path, 'wb') as pdf_file:
+        for chunk in file.chunks():
+            pdf_file.write(chunk)
+
+    # Convert PDF to DOCX
+    docx_path = pdf_path.replace('.pdf', '.docx')
+    cv = Converter(pdf_path)
+    cv.convert(docx_path, start=0, end=None)
+    cv.close()
+
+    # Send the DOCX file back to the client
+    with open(docx_path, 'rb') as docx_file:
+        response = HttpResponse(docx_file.read(), content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        response['Content-Disposition'] = f'attachment; filename={file.name.replace(".pdf", ".docx")}'
+        return response

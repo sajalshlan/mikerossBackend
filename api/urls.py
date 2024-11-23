@@ -14,4 +14,5 @@ urlpatterns = [
     path('profile/', views.get_user_profile, name='user_profile'),
     path('accept_terms/', views.accept_terms, name='accept_terms'),
     path('explain_text/', explain_text, name='explain_text'),
+    path('convert_pdf_to_docx/', views.convert_pdf_to_docx, name='convert_pdf_to_docx'),
 ]
