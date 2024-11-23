@@ -24,6 +24,7 @@ from .serializers import UserSerializer, RegisterSerializer, AcceptTermsSerializ
 from .models import Document, User
 from pdf2docx import Converter
 import tempfile
+import pdfplumber
 
 logger = logging.getLogger(__name__)
 
@@ -372,6 +373,17 @@ def convert_pdf_to_docx(request):
         for chunk in file.chunks():
             pdf_file.write(chunk)
 
+    # Check if the PDF is scanned (image-based)
+    with pdfplumber.open(pdf_path) as pdf:
+        first_page = pdf.pages[0]
+        text = first_page.extract_text() or ""
+        if len(text) < 100:  # Assuming scanned if less than 100 characters
+            # Send the original PDF file back to the client
+            with open(pdf_path, 'rb') as pdf_file:
+                response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+                # response['Content-Disposition'] = f'attachment; filename={file.name}'
+                return response
+
     # Convert PDF to DOCX
     docx_path = pdf_path.replace('.pdf', '.docx')
     cv = Converter(pdf_path)
@@ -381,5 +393,5 @@ def convert_pdf_to_docx(request):
     # Send the DOCX file back to the client
     with open(docx_path, 'rb') as docx_file:
         response = HttpResponse(docx_file.read(), content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-        response['Content-Disposition'] = f'attachment; filename={file.name.replace(".pdf", ".docx")}'
+        response['Content-Disposition'] = f'attachment; filename={file.name.replace('.pdf', '.docx')}'
         return response
