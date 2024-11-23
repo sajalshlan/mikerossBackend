@@ -336,7 +336,7 @@ def explain_text(request):
             
         prompt = f"""
         You are provided with a document and a section of text from that document.
-        Your task is to explain the selected text in more detail.
+        Your task is to explain the selected text in more detail being a legal expert. Do not mention about your role.
         
         Document Context:
         {context_text} 
