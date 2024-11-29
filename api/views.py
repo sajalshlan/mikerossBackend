@@ -355,3 +355,62 @@ def explain_text(request):
         return Response({'error': str(e)}, status=500)
     finally:
         resource_monitor.force_cleanup()
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def redraft_comment(request):
+    """
+    Redrafts a comment based on the original comment, its context, and optional instructions.
+    """
+    resource_monitor.log_memory("Starting redraft request")
+    
+    try:
+        comment = request.data.get('comment')
+        document_content = request.data.get('documentContent')
+        instructions = request.data.get('instructions', '')
+        replies = request.data.get('replies', [])
+        
+        if not comment or not document_content:
+            return Response({
+                'error': 'Missing required data (comment or document content)'
+            }, status=400)
+            
+        # Format replies for context
+        replies_context = ""
+        if replies:
+            replies_context = "\n\nComment Thread:\n"
+            for idx, reply in enumerate(replies, 1):
+                replies_context += f"Reply {idx}: {reply['content']}\n"
+            
+        prompt = f"""
+        You are tasked with redrafting a comment in a document. Consider the following:
+        
+        Document Content:
+        {document_content}
+        
+        Original Comment:
+        {comment}
+        {replies_context}
+        
+        Instructions for Redraft:
+        {instructions if instructions else "Maintain the same tone and length as the original comment while considering the context of any replies."}
+        
+        Please provide a redrafted version of the comment that:
+        1. Maintains professional tone
+        2. Addresses the same core issues
+        3. Takes into account the context from any replies
+        4. Follows any provided instructions
+        5. Is clear and concise
+        
+        Provide only the redrafted comment without any explanations or additional text.
+        """
+        
+        result = util_perform_analysis('explain', prompt)
+        return Response({'success': True, 'result': result})
+        
+    except Exception as e:
+        logger.exception("Error generating redraft")
+        return Response({'error': str(e)}, status=500)
+    finally:
+        resource_monitor.force_cleanup()
