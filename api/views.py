@@ -414,3 +414,66 @@ def reply_to_comment(request):
         return Response({'error': str(e)}, status=500)
     finally:
         resource_monitor.force_cleanup()
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def redraft_comment(request):
+    """
+    Generates a redraft of the selected text based on the comment context.
+    """
+    resource_monitor.log_memory("Starting redraft generation request")
+    
+    try:
+        comment = request.data.get('comment')
+        document_content = request.data.get('documentContent')
+        selected_text = request.data.get('selectedText')
+        instructions = request.data.get('instructions', '')
+        replies = request.data.get('replies', [])
+        
+        if not all([comment, document_content, selected_text]):
+            return Response({
+                'error': 'Missing required data (comment, document content, or selected text)'
+            }, status=400)
+            
+        # Format replies for context
+        replies_context = ""
+        if replies:
+            replies_context = "\n\nComment Thread:\n"
+            for idx, reply in enumerate(replies, 1):
+                replies_context += f"Reply {idx}: {reply['content']}\n"
+            
+        prompt = f"""
+        You are tasked with redrafting a portion of text from a document based on comments and feedback. Consider the following:
+        
+        Document Context:
+        {document_content}
+        
+        Original Text to Redraft:
+        {selected_text}
+        
+        Comment on this text:
+        {comment}
+        {replies_context}
+        
+        Instructions for Redraft:
+        {instructions if instructions else "Improve the text while maintaining the document's style and addressing the feedback in the comments."}
+        
+        Please provide a redraft that:
+        1. Maintains the document's tone and style
+        2. Addresses the issues raised in the comments
+        3. Improves clarity and precision
+        4. Follows any provided instructions
+        5. Fits seamlessly into the document context
+        
+        Provide only the redrafted text without any explanations or additional text.
+        """
+        
+        result = util_perform_analysis('explain', prompt)
+        return Response({'success': True, 'result': result})
+        
+    except Exception as e:
+        logger.exception("Error generating redraft")
+        return Response({'error': str(e)}, status=500)
+    finally:
+        resource_monitor.force_cleanup()
