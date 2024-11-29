@@ -14,5 +14,5 @@ urlpatterns = [
     path('profile/', views.get_user_profile, name='user_profile'),
     path('accept_terms/', views.accept_terms, name='accept_terms'),
     path('explain_text/', explain_text, name='explain_text'),
-    path('redraft_comment/', views.redraft_comment, name='redraft_comment'),
+    path('reply_to_comment/', views.reply_to_comment, name='reply_to_comment'),
 ]

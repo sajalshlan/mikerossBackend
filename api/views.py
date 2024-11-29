@@ -359,11 +359,11 @@ def explain_text(request):
 @csrf_exempt
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def redraft_comment(request):
+def reply_to_comment(request):
     """
-    Redrafts a comment based on the original comment, its context, and optional instructions.
+    Generates an AI reply to a comment based on the original comment, its context, and optional instructions.
     """
-    resource_monitor.log_memory("Starting redraft request")
+    resource_monitor.log_memory("Starting reply generation request")
     
     try:
         comment = request.data.get('comment')
@@ -384,7 +384,7 @@ def redraft_comment(request):
                 replies_context += f"Reply {idx}: {reply['content']}\n"
             
         prompt = f"""
-        You are tasked with redrafting a comment in a document. Consider the following:
+        You are tasked with generating a reply to a comment in a document. Consider the following:
         
         Document Content:
         {document_content}
@@ -393,24 +393,24 @@ def redraft_comment(request):
         {comment}
         {replies_context}
         
-        Instructions for Redraft:
+        Instructions for Reply:
         {instructions if instructions else "Maintain the same tone and length as the original comment while considering the context of any replies."}
         
-        Please provide a redrafted version of the comment that:
+        Please provide a reply that:
         1. Maintains professional tone
         2. Addresses the same core issues
         3. Takes into account the context from any replies
         4. Follows any provided instructions
         5. Is clear and concise
         
-        Provide only the redrafted comment without any explanations or additional text.
+        Provide only the reply without any explanations or additional text.
         """
         
         result = util_perform_analysis('explain', prompt)
         return Response({'success': True, 'result': result})
         
     except Exception as e:
-        logger.exception("Error generating redraft")
+        logger.exception("Error generating reply")
         return Response({'error': str(e)}, status=500)
     finally:
         resource_monitor.force_cleanup()
