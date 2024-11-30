@@ -410,7 +410,15 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
         prompt = f"""
         First, thoroughly analyze this {doc_type} for all potential risks using the following framework:
 
-        IMPORTANT: When referencing specific clauses or sections, include the exact text within [[double brackets]]. Do it for every party.
+        IMPORTANT REFERENCE RULES:
+        1. When referencing specific clauses or sections, always include the actual text content (first 50-70 characters) within [[double brackets]], not the clause numbers.
+        2. For multiple related references, separate them with numbers like this:
+           - Single reference: [[The Seller shall deliver...]]
+           - Multiple references: [[The Buyer agrees to pay...]] [1] [[All disputes shall be...]] [2] [[This agreement shall be...]] [3]
+        3. Never combine multiple references within a single bracket.
+        4. Always use the exact text as it appears in the document to ensure searchability - do not paraphrase or summarize.
+        5. Do not reference clause numbers (like "Clause 6.3") - instead use the actual text content from that clause.
+        6. Do this for every party.
 
         Structure your response in the following specific format:
 
