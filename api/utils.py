@@ -409,14 +409,10 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
         
         prompt = f"""
         First, thoroughly analyze this {doc_type} for all potential risks using the following framework:
-        Structure your response in the following specific format:
 
-        OUTPUT STRUCTURE:
-        1. First, identify all parties silently (do not list them in the output)
-        2. For each party, present the risks they are exposed to using this format.
-        3. For each risk, provide a detailed analysis of the impact on the party's interests.
-        4. Keep each party's analysis separate, independent and distinct from the other parties'.
-        5. Give fresh numbers to each party's analysis while formatting.
+        IMPORTANT: When referencing specific clauses or sections, include the exact text within [[double brackets]]. Do it for every party.
+
+        Structure your response in the following specific format:
 
         *****[PARTY NAME]*****
         PERSPECTIVE: Brief overview of this party's position and key objectives in the agreement
@@ -425,14 +421,12 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
         
         {risk_content}
 
-
         [Repeat for each party]
 
         IMPORTANT FORMATTING RULES:
         - Use ***** only for party names
         - For section headers, use **
-        - Replace the A, B, C with the **
-        - Include specific clause references in [square brackets]
+        - Include exact quotes using the format specified above
         - Maintain professional, clear language
         """
     
