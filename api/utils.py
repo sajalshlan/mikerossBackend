@@ -586,15 +586,15 @@ def analyze_document_clauses(text: str) -> dict:
     - Category
     - Clause title/type
     - Relevant text excerpt
-    - Brief explanation of categorization
+    - Proper explanation of categorization
     
     Format the response as a JSON structure:
     {{
         "acceptable": [
             {{
                 "title": "clause title",
-                "text": "excerpt",
-                "explanation": "why acceptable"
+                "text": "complete clause text exactly as it appears in the document",
+                "explanation": "why acceptable",
             }}
         ],
         "risky": [...],
