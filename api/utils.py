@@ -572,5 +572,42 @@ def analyze_conflicts_and_common_parties(texts: Dict[str, str]) -> str:
         logger.exception("Error analyzing conflicts and common parties")
         raise Exception(f"An error occurred while analyzing conflicts and common parties: {e}")
 
+def analyze_document_clauses(text: str) -> dict:
+    """
+    Analyzes document clauses and categorizes them
+    """
+    prompt = f"""
+    Analyze the following legal document and categorize its clauses into three categories:
+    1. Acceptable Clauses: Standard terms that follow industry best practices
+    2. Risky Clauses: Terms that need attention or negotiation
+    3. Missing Clauses: Important clauses that should be present but are not
+    
+    For each clause identified, provide:
+    - Category
+    - Clause title/type
+    - Relevant text excerpt
+    - Brief explanation of categorization
+    
+    Format the response as a JSON structure:
+    {{
+        "acceptable": [
+            {{
+                "title": "clause title",
+                "text": "excerpt",
+                "explanation": "why acceptable"
+            }}
+        ],
+        "risky": [...],
+        "missing": [...]
+    }}
+    """
+    
+    try:
+        result = claude_call(text, prompt)  # Using Claude for better analysis
+        return result
+    except Exception as e:
+        logger.error(f"Error in clause analysis: {str(e)}")
+        raise
+
 
 

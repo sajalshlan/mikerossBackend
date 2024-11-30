@@ -15,6 +15,7 @@ from .utils import (
     extract_text_from_zip, 
     perform_analysis as util_perform_analysis, 
     analyze_conflicts_and_common_parties,
+    analyze_document_clauses,
     ResourceMonitor
 )
 from rest_framework import status
@@ -477,3 +478,24 @@ def redraft_comment(request):
         return Response({'error': str(e)}, status=500)
     finally:
         resource_monitor.force_cleanup()
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def analyze_clauses(request):
+    try:
+        text = request.data.get('text', '')
+        if not text:
+            return Response({'error': 'No text provided'}, status=400)
+            
+        # Perform clause analysis using GPT
+        result = analyze_document_clauses(text)
+        print(result)
+        return Response({
+            'success': True,
+            'result': result
+        })
+    except Exception as e:
+        return Response({
+            'error': str(e)
+        }, status=500)
