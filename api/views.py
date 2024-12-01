@@ -328,6 +328,10 @@ def explain_text(request):
     """
     resource_monitor.log_memory("Starting explanation request")
     
+    selected_text = None
+    context_text = None
+    prompt = None
+    
     try:
         selected_text = request.data.get('selectedText')
         context_text = request.data.get('contextText')
@@ -355,6 +359,9 @@ def explain_text(request):
         logger.exception("Error generating explanation")
         return Response({'error': str(e)}, status=500)
     finally:
+        del selected_text
+        del context_text
+        del prompt
         resource_monitor.force_cleanup()
 
 @csrf_exempt
@@ -365,6 +372,13 @@ def reply_to_comment(request):
     Generates an AI reply to a comment based on the original comment, its context, and optional instructions.
     """
     resource_monitor.log_memory("Starting reply generation request")
+    
+    comment = None
+    document_content = None
+    instructions = None
+    replies = None
+    replies_context = None
+    prompt = None
     
     try:
         comment = request.data.get('comment')
@@ -414,6 +428,12 @@ def reply_to_comment(request):
         logger.exception("Error generating reply")
         return Response({'error': str(e)}, status=500)
     finally:
+        del comment
+        del document_content
+        del instructions
+        del replies
+        del replies_context
+        del prompt
         resource_monitor.force_cleanup()
 
 @csrf_exempt
@@ -424,6 +444,14 @@ def redraft_comment(request):
     Generates a redraft of the selected text based on the comment context.
     """
     resource_monitor.log_memory("Starting redraft generation request")
+    
+    comment = None
+    document_content = None
+    selected_text = None
+    instructions = None
+    replies = None
+    replies_context = None
+    prompt = None
     
     try:
         comment = request.data.get('comment')
@@ -477,20 +505,28 @@ def redraft_comment(request):
         logger.exception("Error generating redraft")
         return Response({'error': str(e)}, status=500)
     finally:
+        del comment
+        del document_content
+        del selected_text
+        del instructions
+        del replies
+        del replies_context
+        del prompt
         resource_monitor.force_cleanup()
 
 @csrf_exempt
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def analyze_clauses(request):
+    text = None
+    result = None
+    
     try:
         text = request.data.get('text', '')
         if not text:
             return Response({'error': 'No text provided'}, status=400)
             
-        # Perform clause analysis using GPT
         result = analyze_document_clauses(text)
-        print(result)
         return Response({
             'success': True,
             'result': result
@@ -499,3 +535,7 @@ def analyze_clauses(request):
         return Response({
             'error': str(e)
         }, status=500)
+    finally:
+        del text
+        del result
+        gc.collect()
