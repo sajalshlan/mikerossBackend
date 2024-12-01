@@ -4,7 +4,6 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import CustomTokenObtainPairView, explain_text
 
 urlpatterns = [
-    path('health/', views.health, name='health'),
     path('upload_file/', views.upload_file, name='upload_file'),
     path('perform_analysis/', views.perform_analysis, name='perform_analysis'),
     path('perform_conflict_check/', views.perform_conflict_check, name='perform_conflict_check'),
