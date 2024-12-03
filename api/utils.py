@@ -579,35 +579,39 @@ def analyze_document_clauses(text: str, party_info: dict = None) -> dict:
     Analyzes document clauses from a specific party's perspective
     """
     if party_info:
+        party_name = party_info.get('name', '')
+        party_role = party_info.get('role', '')
+        print(f"party name: {party_name}")
         prompt = f"""
-        Analyze the following legal document from the perspective of {party_info['partyName']} 
-        (acting as {party_info['partyRole']}) and categorize its clauses into three categories:
+        Analyze the following legal document from the perspective of {party_name} 
+        (acting as {party_role}) and categorize its clauses into three categories:
         
-        1. Acceptable Clauses: Terms that are favorable or standard for {party_info['partyName']}
-        2. Risky Clauses: Terms that pose potential risks or need negotiation for {party_info['partyName']}
-        3. Missing Clauses: Important clauses that should be present to protect {party_info['partyName']}'s interests
+        1. Acceptable Clauses: Terms that are favorable or standard for {party_name}
+        2. Risky Clauses: Terms that pose potential risks or need negotiation for {party_name}
+        3. Missing Clauses: Important clauses that should be present to protect {party_name}'s interests
         
-        Consider the specific role and interests of {party_info['partyName']} as {party_info['partyRole']} 
+        Consider the specific role and interests of {party_name} as {party_role} 
         when analyzing each clause.
         
         For each clause identified, provide:
         - Category
         - Clause title/type
         - Relevant text excerpt
-        - Explanation of categorization from {party_info['partyName']}'s perspective
+        - Explanation of categorization from {party_name}'s perspective
         
-        Format the response as a JSON structure:
+        Format the response as a JSON structure and only return the JSON:
         {{
             "acceptable": [
                 {{
                     "title": "clause title",
                     "text": "complete clause text exactly as it appears in the document",
-                    "explanation": "why acceptable for {party_info['partyName']}",
+                    "explanation": "why acceptable for {party_name}",
                 }}
             ],
             "risky": [...],
             "missing": [...]
         }}
+
         """
     else:
         # Your existing prompt for general analysis

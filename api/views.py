@@ -524,10 +524,13 @@ def analyze_clauses(request):
     
     try:
         text = request.data.get('text', '')
-        party_info = request.data.get('partyInfo')  # Get party info from request
+        party_info = request.data.get('partyInfo', {})  # Provide empty dict as default
         
         if not text:
             return Response({'error': 'No text provided'}, status=400)
+        
+        if not party_info:
+            logger.warning("No party info provided for clause analysis")
             
         result = analyze_document_clauses(text, party_info)
         return Response({
@@ -535,6 +538,7 @@ def analyze_clauses(request):
             'result': result
         })
     except Exception as e:
+        logger.error(f"Error in analyze_clauses: {str(e)}")
         return Response({
             'error': str(e)
         }, status=500)
