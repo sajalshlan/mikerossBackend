@@ -16,4 +16,5 @@ urlpatterns = [
     path('reply_to_comment/', views.reply_to_comment, name='reply_to_comment'),
     path('redraft_comment/', views.redraft_comment, name='redraft_comment'),
     path('analyze_clauses/', views.analyze_clauses, name='analyze_clauses'),
+    path('analyze_parties/', views.analyze_parties, name='analyze_parties'),
 ]

@@ -574,41 +574,109 @@ def analyze_conflicts_and_common_parties(texts: Dict[str, str]) -> str:
         logger.exception("Error analyzing conflicts and common parties")
         raise Exception(f"An error occurred while analyzing conflicts and common parties: {e}")
 
-def analyze_document_clauses(text: str) -> dict:
+def analyze_document_clauses(text: str, party_info: dict = None) -> dict:
     """
-    Analyzes document clauses and categorizes them
+    Analyzes document clauses from a specific party's perspective
     """
-    prompt = f"""
-    Analyze the following legal document and categorize its clauses into three categories:
-    1. Acceptable Clauses: Standard terms that follow industry best practices
-    2. Risky Clauses: Terms that need attention or negotiation
-    3. Missing Clauses: Important clauses that should be present but are not
-    
-    For each clause identified, provide:
-    - Category
-    - Clause title/type
-    - Relevant text excerpt
-    - Proper explanation of categorization
-    
-    Format the response as a JSON structure:
-    {{
-        "acceptable": [
-            {{
-                "title": "clause title",
-                "text": "complete clause text exactly as it appears in the document",
-                "explanation": "why acceptable",
-            }}
-        ],
-        "risky": [...],
-        "missing": [...]
-    }}
-    """
+    if party_info:
+        prompt = f"""
+        Analyze the following legal document from the perspective of {party_info['partyName']} 
+        (acting as {party_info['partyRole']}) and categorize its clauses into three categories:
+        
+        1. Acceptable Clauses: Terms that are favorable or standard for {party_info['partyName']}
+        2. Risky Clauses: Terms that pose potential risks or need negotiation for {party_info['partyName']}
+        3. Missing Clauses: Important clauses that should be present to protect {party_info['partyName']}'s interests
+        
+        Consider the specific role and interests of {party_info['partyName']} as {party_info['partyRole']} 
+        when analyzing each clause.
+        
+        For each clause identified, provide:
+        - Category
+        - Clause title/type
+        - Relevant text excerpt
+        - Explanation of categorization from {party_info['partyName']}'s perspective
+        
+        Format the response as a JSON structure:
+        {{
+            "acceptable": [
+                {{
+                    "title": "clause title",
+                    "text": "complete clause text exactly as it appears in the document",
+                    "explanation": "why acceptable for {party_info['partyName']}",
+                }}
+            ],
+            "risky": [...],
+            "missing": [...]
+        }}
+        """
+    else:
+        # Your existing prompt for general analysis
+        prompt = """
+        Analyze the following legal document and categorize its clauses into three categories:
+        1. Acceptable Clauses: Standard terms that follow industry best practices
+        2. Risky Clauses: Terms that need attention or negotiation
+        3. Missing Clauses: Important clauses that should be present but are not
+        
+        For each clause identified, provide:
+        - Category
+        - Clause title/type
+        - Relevant text excerpt
+        - Proper explanation of categorization
+        
+        Format the response as a JSON structure:
+        {{
+            "acceptable": [
+                {{
+                    "title": "clause title",
+                    "text": "complete clause text exactly as it appears in the document",
+                    "explanation": "why acceptable",
+                }}
+            ],
+            "risky": [...],
+            "missing": [...]
+        }}
+        """
     
     try:
-        result = claude_call(text, prompt)  # Using Claude for better analysis
+        result = claude_call(text, prompt)
         return result
     except Exception as e:
         logger.error(f"Error in clause analysis: {str(e)}")
+        raise
+
+def analyze_document_parties(text: str) -> list:
+    """
+    Analyzes document content to extract parties involved.
+    Returns a list of party names and their roles.
+    """
+    prompt = """
+    Analyze the following legal document and identify all parties involved.
+    For each party, provide:
+    1. Party name
+    2. Role in the document (e.g., Buyer, Seller, Lender, Borrower, etc.)
+    
+    Return the results in this JSON format:
+    {
+        "parties": [
+            {
+                "name": "party name",
+                "role": "party role"
+            }
+        ]
+    }
+
+    just the parties and roles, no other text
+    
+    Document text:
+    """
+    
+    try:
+        print("calling claude")
+        result = claude_call(text, prompt)
+        print(f"result: {result}")
+        return result
+    except Exception as e:
+        logger.error(f"Error in party analysis: {str(e)}")
         raise
 
 

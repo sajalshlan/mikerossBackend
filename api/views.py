@@ -16,6 +16,7 @@ from .utils import (
     perform_analysis as util_perform_analysis, 
     analyze_conflicts_and_common_parties,
     analyze_document_clauses,
+    analyze_document_parties,
     ResourceMonitor
 )
 from rest_framework import status
@@ -523,10 +524,12 @@ def analyze_clauses(request):
     
     try:
         text = request.data.get('text', '')
+        party_info = request.data.get('partyInfo')  # Get party info from request
+        
         if not text:
             return Response({'error': 'No text provided'}, status=400)
             
-        result = analyze_document_clauses(text)
+        result = analyze_document_clauses(text, party_info)
         return Response({
             'success': True,
             'result': result
@@ -538,4 +541,31 @@ def analyze_clauses(request):
     finally:
         del text
         del result
+        gc.collect()
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def analyze_parties(request):
+    """
+    Analyzes document content to extract parties involved.
+    """
+    text = None
+    try:
+        text = request.data.get('text')
+        print(text)
+        if not text:
+            return Response({'error': 'No text provided'}, status=400)
+            
+        result = analyze_document_parties(text)
+        return Response({
+            'success': True,
+            'parties': result
+        })
+    except Exception as e:
+        return Response({
+            'error': str(e)
+        }, status=500)
+    finally:
+        del text
         gc.collect()
