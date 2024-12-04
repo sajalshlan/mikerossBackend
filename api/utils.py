@@ -452,7 +452,8 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
     try:
         # For explanations, we'll use Claude for more nuanced responses
         if analysis_type == 'explain':
-            result = claude_call_explanation(prompt)
+            # result = claude_call_explanation(prompt)
+            result = gemini_call_flash(text, prompt)
         else:
             result = gemini_call(text, prompt)
         
@@ -494,6 +495,28 @@ def gemini_call(text, prompt):
 
     try:
         model = genai.GenerativeModel('gemini-1.5-pro')
+        response = model.generate_content(
+            [system_prompt, text, prompt],
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.1,  # Slightly increased for more natural language while maintaining precision
+                max_output_tokens=4000,  # Increased token limit for more comprehensive responses
+                top_p=0.8,  # Added for better response quality
+                top_k=40,  # Added for better response diversity while maintaining relevance
+            )
+        )
+        logger.info("Gemini API call successful")
+        return response.text
+    except Exception as e:
+        logger.error(f"Error calling Gemini API: {str(e)}")
+        raise Exception(f"An error occurred while calling Gemini API: {e}")
+
+def gemini_call_flash(text, prompt):
+    logger.info("Calling Gemini Flash API")
+    
+    system_prompt = """You are a highly experienced General Counsel of a Fortune 500 company with over 20 years of experience in corporate law."""
+
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
         response = model.generate_content(
             [system_prompt, text, prompt],
             generation_config=genai.types.GenerationConfig(
@@ -642,7 +665,8 @@ def analyze_document_clauses(text: str, party_info: dict = None) -> dict:
         """
     
     try:
-        result = claude_call(text, prompt)
+        result = gemini_call_flash(text, prompt)
+        # result = claude_call(text, prompt)
         return result
     except Exception as e:
         logger.error(f"Error in clause analysis: {str(e)}")
@@ -676,7 +700,8 @@ def analyze_document_parties(text: str) -> list:
     
     try:
         print("calling claude")
-        result = claude_call(text, prompt)
+        result = gemini_call_flash(text, prompt)
+        # result = claude_call(text, prompt)
         print(f"result: {result}")
         return result
     except Exception as e:
