@@ -510,13 +510,12 @@ def gemini_call(text, prompt):
         raise Exception(f"An error occurred while calling Gemini API: {e}")
 
 def claude_call(text, prompt):
-    logger.info("Calling Claude API")
+    logger.info("Calling Claude SONNET API")
     
     system_prompt = """You are a highly experienced General Counsel of a Fortune 500 company with over 20 years of experience in corporate law."""
     
     try:
         client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
-        print("claude call")
         response = client.messages.create(
             model="claude-3-5-sonnet-latest",
             max_tokens=4000,
@@ -536,15 +535,17 @@ def claude_call(text, prompt):
         raise Exception(f"An error occurred while calling Claude API: {e}")
     
 def claude_call_explanation(prompt):
-    logger.info("Calling Claude API")
+    logger.info("Calling Claude SONNET API")
+
+    system_prompt = """You are a highly experienced General Counsel of a Fortune 500 company with over 20 years of experience in corporate law."""
     
     try:
         client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
-        print("claude call")
         response = client.messages.create(
             model="claude-3-5-sonnet-latest",
             max_tokens=1000,
             temperature=0.9,
+            system=system_prompt,
             messages=[
                 {
                     "role": "user",
@@ -557,6 +558,30 @@ def claude_call_explanation(prompt):
     except Exception as e:
         logger.error(f"Error calling Claude API: {str(e)}")
         raise Exception(f"An error occurred while calling Claude API: {e}")
+    
+def claude_call_complex(text, prompt):
+    logger.info("Calling Claude OPUS API")
+    
+    try:
+        client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+        response = client.messages.create(
+            model="claude-3-opus-latest",
+            max_tokens=4000,
+            temperature=0.1,
+            system="You are a highly experienced General Counsel of a Fortune 500 company with over 20 years of experience in corporate law.",
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"{prompt}\n\nDocument:\n{text}"
+                }
+            ]
+        )
+        logger.info("Claude API call successful")
+        return response.content[0].text
+    except Exception as e:
+        logger.error(f"Error calling Claude API: {str(e)}")
+        raise Exception(f"An error occurred while calling Claude API: {e}")
+    
 
 def analyze_conflicts_and_common_parties(texts: Dict[str, str]) -> str:
     logger.info("Analyzing conflicts and common parties")
@@ -611,7 +636,7 @@ def analyze_document_clauses(text: str, party_info: dict = None) -> dict:
             "risky": [...],
             "missing": [...]
         }}
-
+        Only return the JSON, no other text.
         """
     else:
         # Your existing prompt for general analysis
