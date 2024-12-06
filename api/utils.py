@@ -702,7 +702,7 @@ def analyze_document_parties(text: str) -> list:
     try:
         print("calling claude")
         result = claude_call(text, prompt)
-        print(f"result: {result}")
+        # print(f"result: {result}")
         return result
     except Exception as e:
         logger.error(f"Error in party analysis: {str(e)}")

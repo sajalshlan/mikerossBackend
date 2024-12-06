@@ -557,7 +557,7 @@ def analyze_parties(request):
     text = None
     try:
         text = request.data.get('text')
-        print(text)
+        # print(text)
         if not text:
             return Response({'error': 'No text provided'}, status=400)
             
