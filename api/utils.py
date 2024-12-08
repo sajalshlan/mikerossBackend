@@ -452,7 +452,7 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
     try:
         # For explanations, we'll use Claude for more nuanced responses
         if analysis_type == 'explain':
-            result = claude_call_explanation(prompt)
+            result = gemini_call(text, prompt)
         else:
             result = gemini_call(text, prompt)
         
@@ -559,7 +559,7 @@ def claude_call_explanation(prompt):
         logger.error(f"Error calling Claude API: {str(e)}")
         raise Exception(f"An error occurred while calling Claude API: {e}")
     
-def claude_call_complex(text, prompt):
+def claude_call_opus(text, prompt):
     logger.info("Calling Claude OPUS API")
     
     try:
@@ -667,7 +667,8 @@ def analyze_document_clauses(text: str, party_info: dict = None) -> dict:
         """
     
     try:
-        result = claude_call(text, prompt)
+        result = gemini_call(text, prompt)
+        print(f"result: {result}")
         return result
     except Exception as e:
         logger.error(f"Error in clause analysis: {str(e)}")
@@ -701,8 +702,8 @@ def analyze_document_parties(text: str) -> list:
     
     try:
         print("calling claude")
-        result = claude_call(text, prompt)
-        # print(f"result: {result}")
+        result = gemini_call(text, prompt)
+        print(f"result: {result}")
         return result
     except Exception as e:
         logger.error(f"Error in party analysis: {str(e)}")

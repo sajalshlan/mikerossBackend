@@ -573,3 +573,57 @@ def analyze_parties(request):
     finally:
         del text
         gc.collect()
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def redraft_text(request):
+    """
+    Endpoint to redraft selected text with optional instructions.
+    """
+    try:
+        selected_text = request.data.get('selectedText')
+        document_content = request.data.get('documentContent')
+        instructions = request.data.get('instructions', '')
+
+        if not selected_text or not document_content:
+            return Response({
+                'success': False,
+                'error': 'Missing required parameters'
+            }, status=400)
+
+        # Create prompt for redrafting
+        prompt = f"""
+        You are a legal document expert. Your task is to redraft the following text to improve its clarity, 
+        precision, and legal effectiveness while maintaining its original intent.
+
+        Document Context:
+        {document_content}
+
+        Text to Redraft:
+        {selected_text}
+
+        {f"Additional Instructions: {instructions}" if instructions else ""}
+
+        Please provide only the redrafted text without any explanations or additional text.
+        Ensure the redrafted version:
+        1. Maintains legal accuracy and enforceability
+        2. Improves clarity and readability
+        3. Uses consistent terminology
+        4. Follows standard legal drafting conventions
+        """
+
+        # Use the existing perform_analysis utility with a specific mode
+        result = util_perform_analysis('explain', prompt)
+
+        return Response({
+            'success': True,
+            'result': result
+        })
+
+    except Exception as e:
+        logger.exception("Error in redraft_text endpoint")
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=500)
