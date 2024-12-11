@@ -17,7 +17,9 @@ from .utils import (
     analyze_conflicts_and_common_parties,
     analyze_document_clauses,
     analyze_document_parties,
-    ResourceMonitor
+    ResourceMonitor,
+    claude_call_explanation,
+    claude_call_opus
 )
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -627,3 +629,69 @@ def redraft_text(request):
             'success': False,
             'error': str(e)
         }, status=500)
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def brainstorm_chat(request):
+    """
+    Endpoint for brainstorming solutions and ideas about specific clauses.
+    """
+    resource_monitor.log_memory("Starting brainstorm chat")
+    
+    message = None
+    clause_text = None
+    analysis = None
+    document_content = None
+    prompt = None
+    
+    try:
+        message = request.data.get('message')
+        clause_text = request.data.get('clauseText')
+        analysis = request.data.get('analysis')
+        document_content = request.data.get('documentContent')
+            
+        prompt = f"""
+        You are a legal expert helping to brainstorm and discuss solutions for contract clauses. 
+        Consider the following context:
+
+        Document Context:
+        {document_content}
+
+        Clause being discussed:
+        {clause_text}
+
+        Analysis of the clause:
+        {analysis}
+
+        User's message:
+        {message}
+
+        Please provide a helpful, detailed response that:
+        1. Directly addresses the user's message/question
+        2. Considers the specific context of the clause
+        3. References relevant legal principles or best practices
+        4. Suggests practical solutions or alternatives when appropriate
+        5. Maintains a conversational yet professional tone
+
+        Focus on being constructive and solution-oriented while maintaining legal accuracy.
+        """
+        print(prompt)
+        result = claude_call_explanation(prompt)
+        return Response({
+            'success': True,
+            'message': result
+        })
+        
+    except Exception as e:
+        logger.exception("Error in brainstorm chat")
+        return Response({
+            'error': str(e)
+        }, status=500)
+    finally:
+        del message
+        del clause_text
+        del analysis
+        del document_content
+        del prompt
+        resource_monitor.force_cleanup()

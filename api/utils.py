@@ -208,7 +208,7 @@ def extract_text_from_pdf(file_path: str, rag_pipeline: RAGPipeline) -> str:
             # Try first page to check if it's text-based
             first_page = pdf.pages[0]
             text = first_page.extract_text() or ""
-            
+            print(len(text))
             if len(text) > 100:
                 texts = []
                 for page in pdf.pages:
@@ -452,7 +452,7 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
     try:
         # For explanations, we'll use Claude for more nuanced responses
         if analysis_type == 'explain':
-            result = gemini_call(text, prompt)
+            result = claude_call(text, prompt)
         else:
             result = gemini_call(text, prompt)
         

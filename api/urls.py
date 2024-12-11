@@ -18,4 +18,5 @@ urlpatterns = [
     path('analyze_clauses/', views.analyze_clauses, name='analyze_clauses'),
     path('analyze_parties/', views.analyze_parties, name='analyze_parties'),
     path('redraft_text/', views.redraft_text, name='redraft_text'),
+    path('brainstorm_chat/', views.brainstorm_chat, name='brainstorm_chat'),
 ]
