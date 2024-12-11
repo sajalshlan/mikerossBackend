@@ -16,6 +16,7 @@ import google.generativeai as genai
 from PIL import Image
 from typing import List, Tuple, Dict, Optional
 import pandas as pd
+import anthropic 
 import time
 from .prompts import (
     DOCUMENT_TYPES,
@@ -29,7 +30,6 @@ from .prompts import (
     DRAFT_PROMPT,
     ASK_PROMPT
 )
-import anthropic  # Add this import at the top
 
 logger = logging.getLogger(__name__)
 load_dotenv()
@@ -39,10 +39,6 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GOOGLE_VISION_API_KEY = os.getenv("GOOGLE_VISION_API_KEY") 
 
 genai.configure(api_key=GEMINI_API_KEY)
-
-# Add these at the top level with other constants
-
-
 
 class ResourceMonitor:
     def __init__(self):
@@ -160,7 +156,6 @@ def process_pdf_pages(pdf_path: str, rag_pipeline: RAGPipeline) -> List[str]:
                 del page
                 resource_monitor.force_cleanup()
     return texts
-
 
 def process_single_page(image: Image, rag_pipeline: RAGPipeline) -> str:
     img_byte_arr = io.BytesIO()
@@ -582,7 +577,6 @@ def claude_call_opus(text, prompt):
         logger.error(f"Error calling Claude API: {str(e)}")
         raise Exception(f"An error occurred while calling Claude API: {e}")
     
-
 def analyze_conflicts_and_common_parties(texts: Dict[str, str]) -> str:
     logger.info("Analyzing conflicts and common parties")
     
