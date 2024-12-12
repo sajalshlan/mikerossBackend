@@ -86,9 +86,8 @@ class RAGPipeline:
                     resource_monitor.force_cleanup()
             
             return "\n\n".join(texts)
-        finally:
-            texts.clear()
-            del texts
+        except Exception as e:
+            return ""
 
     def _process_single_image(self, img_bytes: bytes) -> Optional[str]:
         try:
@@ -128,6 +127,7 @@ def ocr_process(file_path: str, rag_pipeline: RAGPipeline) -> str:
     try:
         if file_path.lower().endswith('.pdf'):
             texts = process_pdf_pages(file_path, rag_pipeline)
+            print("ocr_process: texts: ", texts)
         else:
             with open(file_path, 'rb') as file:
                 img_bytes = file.read()
@@ -136,25 +136,21 @@ def ocr_process(file_path: str, rag_pipeline: RAGPipeline) -> str:
                     texts.append(text)
         
         result = '\n\n'.join(texts)
+        print(f"result: {result}")
         return result.encode('utf-8', errors='ignore').decode('utf-8')
     except Exception as e:
         logger.error(f"OCR error: {e}")
         return ""
-    finally:
-        texts.clear()
-        del texts
-        resource_monitor.force_cleanup()
 
 def process_pdf_pages(pdf_path: str, rag_pipeline: RAGPipeline) -> List[str]:
     texts = []
     try:
-        # Process one page at a time
         with open(pdf_path, 'rb') as file:
             pdf_data = file.read()
-            # Get total pages first
-            total_pages = len(convert_from_bytes(pdf_data, first_page=1, last_page=1))
+            all_pages = convert_from_bytes(pdf_data)
+            total_pages = len(all_pages)
+            del all_pages
             
-            # Process each page individually
             for page_num in range(1, total_pages + 1):
                 try:
                     pages = convert_from_bytes(
@@ -170,14 +166,10 @@ def process_pdf_pages(pdf_path: str, rag_pipeline: RAGPipeline) -> List[str]:
                 finally:
                     del pages
                     resource_monitor.force_cleanup()
-        
         return texts
     except Exception as e:
         logger.error(f"Error processing PDF pages: {e}")
         return texts
-    finally:
-        texts.clear()
-        del texts
 
 def process_single_page(image: Image, rag_pipeline: RAGPipeline) -> str:
     img_byte_arr = io.BytesIO()
@@ -255,7 +247,6 @@ def extract_text_from_txt(file_path: str) -> str:
         return ""
 
 def extract_text_from_zip(zip_file_path: str, rag_pipeline: RAGPipeline) -> Dict:
-    resource_monitor.log_memory("Starting ZIP extraction")
     results = {}
     
     with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
@@ -317,10 +308,8 @@ def get_pdf_base64(file_path: str, chunk_size: int = 8192) -> str:
                 base64_chunks.append(base64.b64encode(chunk).decode('utf-8'))
                 del chunk
         
-        result = ''.join(base64_chunks)
-        return result
+        return ''.join(base64_chunks)
     finally:
-        base64_chunks.clear()
         del base64_chunks
 
 def extract_text_from_spreadsheet(file_content: bytes, file_extension: str) -> str:

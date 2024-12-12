@@ -31,7 +31,7 @@ SECRET_KEY = 'django-insecure-+pbh^dl*(g9(^#y9j-tky*!)h_l7^4p452qtlojee)=fqr3d#1
 DEBUG = True
 GOOGLE_VISION_API_KEY = os.getenv('GOOGLE_VISION_API_KEY')
 
-CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_ALL_ORIGINS = True
 
 ALLOWED_HOSTS = ['*']
 CORS_ALLOW_CREDENTIALS = True  # Important for Office add-ins
