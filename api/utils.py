@@ -127,7 +127,6 @@ def ocr_process(file_path: str, rag_pipeline: RAGPipeline) -> str:
     try:
         if file_path.lower().endswith('.pdf'):
             texts = process_pdf_pages(file_path, rag_pipeline)
-            print("ocr_process: texts: ", texts)
         else:
             with open(file_path, 'rb') as file:
                 img_bytes = file.read()
@@ -136,7 +135,6 @@ def ocr_process(file_path: str, rag_pipeline: RAGPipeline) -> str:
                     texts.append(text)
         
         result = '\n\n'.join(texts)
-        print(f"result: {result}")
         return result.encode('utf-8', errors='ignore').decode('utf-8')
     except Exception as e:
         logger.error(f"OCR error: {e}")
@@ -217,7 +215,6 @@ def extract_text_from_pdf(file_path: str, rag_pipeline: RAGPipeline) -> str:
             # Try first page to check if it's text-based
             first_page = pdf.pages[0]
             text = first_page.extract_text() or ""
-            print(len(text))
             if len(text) > 100:
                 texts = []
                 for page in pdf.pages:
@@ -373,13 +370,8 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
     elif analysis_type == 'shortSummary':
         # First classify the document
         doc_type = classify_document(text[:1000])
-        print('-------------------------')
-        print(doc_type)
-        print('-------------------------')
 
-        print(f"short summary: classified into {doc_type}")
         logger.info(f"Document classified as: {doc_type}")
-        print(f"short summary: {SHORT_SUMMARY_PROMPTS[doc_type]}")
         
         if doc_type and doc_type in SHORT_SUMMARY_PROMPTS:
             prompt = f"""
@@ -708,7 +700,7 @@ def analyze_document_parties(text: str) -> list:
     try:
         print("calling claude")
         result = gemini_call(text, prompt)
-        print(f"result: {result}")
+        (f"result: {result}")
         return result
     except Exception as e:
         logger.error(f"Error in party analysis: {str(e)}")
