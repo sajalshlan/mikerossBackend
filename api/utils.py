@@ -147,17 +147,37 @@ def ocr_process(file_path: str, rag_pipeline: RAGPipeline) -> str:
 
 def process_pdf_pages(pdf_path: str, rag_pipeline: RAGPipeline) -> List[str]:
     texts = []
-    with open(pdf_path, 'rb') as file:
-        pages = convert_from_bytes(file.read(), single_file=False)
-        for page in pages:
-            try:
-                text = process_single_page(page, rag_pipeline)
-                if text:
-                    texts.append(text)
-            finally:
-                del page
-                resource_monitor.force_cleanup()
-    return texts
+    try:
+        # Process one page at a time
+        with open(pdf_path, 'rb') as file:
+            pdf_data = file.read()
+            # Get total pages first
+            total_pages = len(convert_from_bytes(pdf_data, first_page=1, last_page=1))
+            
+            # Process each page individually
+            for page_num in range(1, total_pages + 1):
+                try:
+                    pages = convert_from_bytes(
+                        pdf_data, 
+                        first_page=page_num, 
+                        last_page=page_num,
+                        single_file=False
+                    )
+                    if pages:
+                        text = process_single_page(pages[0], rag_pipeline)
+                        if text:
+                            texts.append(text)
+                finally:
+                    del pages
+                    resource_monitor.force_cleanup()
+        
+        return texts
+    except Exception as e:
+        logger.error(f"Error processing PDF pages: {e}")
+        return texts
+    finally:
+        texts.clear()
+        del texts
 
 def process_single_page(image: Image, rag_pipeline: RAGPipeline) -> str:
     img_byte_arr = io.BytesIO()
