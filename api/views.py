@@ -238,21 +238,24 @@ def perform_analysis(request):
             
         include_history = request.data.get('include_history', False)
         referenced_text = request.data.get('referenced_text', False)
-        print('--------------------------------')
-        print("include_history", include_history)
-        print("referenced_text", referenced_text)
-        print('--------------------------------')
         # Parse the input for chat analysis
         if analysis_type == 'ask':
             context_parts = []
             
             if referenced_text:
-                context_parts.append(f'Selected Text for Reference:\n{referenced_text}')
-            
-            context_parts.append(f'Document Context:\n{text}')
-            
-            if include_history:
-                context_parts.append(f'Previous Conversation (last 10 messages):\n{include_history}')
+                # If there's referenced text, use it as primary context
+                context_parts.extend([
+                    f'Selected Text for Reference:\n{referenced_text}',
+                    f'Document Context:\n{text}',
+                    'Please answer primarily focusing on the referenced text while considering the document context.'
+                ])
+            else:
+                # If no referenced text, use document context and include history if available
+                context_parts.append(f'Document Context:\n{text}')
+                
+                if include_history:
+                    context_parts.append(f'Previous Conversation (last 10 messages):\n{include_history}')
+                    context_parts.append('Please provide a response considering both the document context and the conversation history.')
             
             text = '\n\n'.join(context_parts)
         result = analyze_text(analysis_type, text or ocr_text)
@@ -263,7 +266,6 @@ def perform_analysis(request):
             )
         return Response(result)
     finally:
-        # Clean up the text variable
         del text
         resource_monitor.force_cleanup()
 
