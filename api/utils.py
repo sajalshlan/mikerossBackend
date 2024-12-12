@@ -74,7 +74,7 @@ class RAGPipeline:
     def analyze_images(self, images: List[Tuple[str, Tuple[str, bytes, str]]]) -> str:
         texts = []
         try:
-            for _, image_tuple in images[:50]:
+            for _, image_tuple in images:
                 try:
                     _, img_bytes, _ = image_tuple
                     text = self._process_single_image(img_bytes)
@@ -148,10 +148,12 @@ def ocr_process(file_path: str, rag_pipeline: RAGPipeline) -> str:
 def process_pdf_pages(pdf_path: str, rag_pipeline: RAGPipeline) -> List[str]:
     texts = []
     with open(pdf_path, 'rb') as file:
-        for page in convert_from_bytes(file.read(), single_file=True):
+        pages = convert_from_bytes(file.read(), single_file=False)
+        for page in pages:
             try:
                 text = process_single_page(page, rag_pipeline)
-                texts.append(text)
+                if text:
+                    texts.append(text)
             finally:
                 del page
                 resource_monitor.force_cleanup()
@@ -361,16 +363,18 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
     
     elif analysis_type == 'shortSummary':
         # First classify the document
-        doc_type = classify_document(text[:100])
+        doc_type = classify_document(text[:1000])
+        print('-------------------------')
+        print(doc_type)
+        print('-------------------------')
+
         print(f"short summary: classified into {doc_type}")
         logger.info(f"Document classified as: {doc_type}")
         print(f"short summary: {SHORT_SUMMARY_PROMPTS[doc_type]}")
         
         if doc_type and doc_type in SHORT_SUMMARY_PROMPTS:
             prompt = f"""
-            Short summary of the document:
             {SHORT_SUMMARY_PROMPTS[doc_type]}
-            Do not mention about the framework. Follow the framework strictly.
             """
         else:
             logger.info("Using general summary prompt for short summary")
@@ -383,9 +387,7 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
 
         if doc_type and doc_type in LONG_SUMMARY_PROMPTS:
             prompt = f"""
-            Provide a comprehensive summary of the document. 
             {LONG_SUMMARY_PROMPTS[doc_type]}
-            Do not mention about the framework. Follow the framework strictly.
             """
         else:
             logger.info("Using general summary prompt for long summary")

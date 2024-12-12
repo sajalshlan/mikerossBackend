@@ -255,9 +255,6 @@ def perform_analysis(request):
                 context_parts.append(f'Previous Conversation (last 10 messages):\n{include_history}')
             
             text = '\n\n'.join(context_parts)
-            print('********************************')
-            print(text)
-            print('********************************')
         result = analyze_text(analysis_type, text or ocr_text)
         if 'error' in result:
             return Response(
