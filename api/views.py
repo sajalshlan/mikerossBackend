@@ -237,11 +237,28 @@ def perform_analysis(request):
             return Response({'error': 'No text content found. Please provide text for analysis.'}, status=400)
             
         include_history = request.data.get('include_history', False)
-        
+        referenced_text = request.data.get('referenced_text', False)
+        print('--------------------------------')
+        print("include_history", include_history)
+        print("referenced_text", referenced_text)
+        print('--------------------------------')
         # Parse the input for chat analysis
-        if analysis_type == 'ask' and include_history:
-            text = f'{text}\n\nPrevious Conversation (last 10 messages):\n{include_history}'
-        result = analyze_text(analysis_type, text or ocr_text)  # Use OCR text if normal text is not available
+        if analysis_type == 'ask':
+            context_parts = []
+            
+            if referenced_text:
+                context_parts.append(f'Selected Text for Reference:\n{referenced_text}')
+            
+            context_parts.append(f'Document Context:\n{text}')
+            
+            if include_history:
+                context_parts.append(f'Previous Conversation (last 10 messages):\n{include_history}')
+            
+            text = '\n\n'.join(context_parts)
+            print('********************************')
+            print(text)
+            print('********************************')
+        result = analyze_text(analysis_type, text or ocr_text)
         if 'error' in result:
             return Response(
                 result, 
