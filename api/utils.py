@@ -28,7 +28,7 @@ from .prompts import (
     CONFLICT_ANALYSIS_PROMPT,
     LONG_SUMMARY_PROMPTS,
     DRAFT_PROMPT,
-    ASK_PROMPT
+    ASK_PROMPT,
 )
 
 logger = logging.getLogger(__name__)
@@ -294,20 +294,13 @@ def process_pdf_zip_entry(pdf_path: str, rag_pipeline: RAGPipeline) -> Dict:
         'base64': base64_content
     }
 
-def get_pdf_base64(file_path: str, chunk_size: int = 8192) -> str:
-    base64_chunks = []
+def get_pdf_base64(file_path: str) -> str:
     try:
         with open(file_path, 'rb') as pdf_file:
-            while True:
-                chunk = pdf_file.read(chunk_size)
-                if not chunk:
-                    break
-                base64_chunks.append(base64.b64encode(chunk).decode('utf-8'))
-                del chunk
-        
-        return ''.join(base64_chunks)
-    finally:
-        del base64_chunks
+            return base64.b64encode(pdf_file.read()).decode('utf-8')
+    except Exception as e:
+        logger.error(f"Error encoding PDF to base64: {e}")
+        raise
 
 def extract_text_from_spreadsheet(file_content: bytes, file_extension: str) -> str:
     excel_file = io.BytesIO(file_content)
@@ -339,15 +332,37 @@ def classify_document(text: str) -> str:
     {}
     
     Respond ONLY with the exact category name from the list above. If the document doesn't match any category exactly, 
-    choose the closest match. Provide ONLY the category name, no other text or explanation.
+    choose the "None of the above" category present at the end of the list. Provide ONLY the category name, no other text or explanation.
     """.format("\n".join(DOCUMENT_TYPES))
-    
     try:
         result = claude_call(text, classification_prompt)
         classified_type = result.strip()
+        print(f"classified_type: {classified_type}")
         if classified_type in DOCUMENT_TYPES:
             return classified_type
         # If response doesn't match exactly, return None to trigger general prompt
+        logger.warning(f"Invalid classification result: {classified_type}")
+        return None
+    except Exception as e:
+        logger.error(f"Error in document classification: {e}")
+        return None
+
+def classify_document_new(text: str) -> str:
+    classification_prompt = """
+    You are a legal document classifier. Based on the document provided, classify it into ONE of the following categories:
+    
+    {}
+    
+    Consider the document's primary purpose, structure, and content. Respond ONLY with the exact category name from the list above. 
+    Provide ONLY the category name, no other text or explanation.
+    """.format("\n".join(DOCUMENT_CATEGORIES))
+
+    try:
+        result = claude_call(text, classification_prompt)
+        classified_type = result.strip()
+        if classified_type in DOCUMENT_CATEGORIES:
+            print(f"classified_type: {classified_type}")
+            return classified_type
         logger.warning(f"Invalid classification result: {classified_type}")
         return None
     except Exception as e:
@@ -376,6 +391,7 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
         if doc_type and doc_type in SHORT_SUMMARY_PROMPTS:
             prompt = f"""
             {SHORT_SUMMARY_PROMPTS[doc_type]}
+           Important: Provide your analysis directly without any disclaimers or comments about document classification or type mismatches. Focus only on analyzing the actual content and terms of the document.
             """
         else:
             logger.info("Using general summary prompt for short summary")
@@ -389,6 +405,7 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
         if doc_type and doc_type in LONG_SUMMARY_PROMPTS:
             prompt = f"""
             {LONG_SUMMARY_PROMPTS[doc_type]}
+            Important: Provide your analysis directly without any disclaimers or comments about document classification or type mismatches. Focus only on analyzing the actual content and terms of the document.
             """
         else:
             logger.info("Using general summary prompt for long summary")
@@ -488,7 +505,7 @@ def has_common_party(texts):
 def gemini_call(text, prompt):
     logger.info("Calling Gemini API")
     
-    system_prompt = """You are a highly experienced General Counsel of a Fortune 500 company with over 20 years of experience in corporate law."""
+    system_prompt = """You are a highly experienced legal assistant to the General Counsel of a Fortune 500 company."""
 
     try:
         model = genai.GenerativeModel('gemini-1.5-pro')

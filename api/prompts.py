@@ -27,7 +27,8 @@ DOCUMENT_TYPES = [
     "Tolling Agreement",
     "Slump Sale Agreement",
     "Patent Assignment Agreement",
-    "Technology License Agreement"
+    "Technology License Agreement",
+    "None of the above"
 ]
 
 SHORT_SUMMARY_PROMPTS = {
@@ -81,7 +82,47 @@ SHORT_SUMMARY_PROMPTS = {
     
     "Patent Assignment Agreement": """Summarize this document focusing on: 1. Identification of patents being transferred. 2. Consideration/payment terms. 3. Representations and warranties of ownership. 4. Indemnity provisions for infringement claims. 5. Obligations for transferring related documentation.""",
     
-    "Technology License Agreement": """Summarize this document focusing on: 1. Scope of licensed technology, including territorial and exclusivity rights. 2. Payment terms and royalty structure. 3. Restrictions on sublicensing or misuse of the technology. 4. Termination provisions and post-termination obligations. 5. Indemnity and audit rights for royalty calculations."""
+    "Technology License Agreement": """Summarize this document focusing on: 1. Scope of licensed technology, including territorial and exclusivity rights. 2. Payment terms and royalty structure. 3. Restrictions on sublicensing or misuse of the technology. 4. Termination provisions and post-termination obligations. 5. Indemnity and audit rights for royalty calculations.""",
+
+    "None of the above":"""
+      Generate a comprehensive summary of this legal document focusing on:
+
+      1. Document Type and Purpose
+      - Identify the primary purpose and nature of the agreement
+      - Key objectives and intended outcomes
+
+      2. Parties Involved
+      - Identify all parties and their roles
+      - Key relationships and obligations
+
+      3. Key Terms and Conditions
+      - Main rights and obligations of each party
+      - Critical deadlines and timelines
+      - Financial terms and payment obligations
+      - Performance requirements and standards
+
+      4. Risk Allocation
+      - Liability provisions
+      - Indemnification obligations
+      - Insurance requirements
+      - Warranty and representation commitments
+
+      5. Important Clauses
+      - Termination conditions
+      - Default scenarios and remedies
+      - Change or modification provisions
+      - Assignment and transfer rights
+      - Dispute resolution mechanisms
+
+      6. Special Provisions
+      - Any unique or notable terms
+      - Industry-specific requirements
+      - Regulatory compliance obligations
+
+      Present the summary in clear, actionable points that highlight business impact.
+      Use professional language and maintain a logical flow.
+      Include specific references to relevant sections where appropriate.
+   """
 }
 
 # Add a GENERAL_SUMMARY_PROMPT constant
@@ -124,6 +165,22 @@ Present the summary in clear, actionable points that highlight business impact.
 Use professional language and maintain a logical flow.
 Include specific references to relevant sections where appropriate.
 """
+
+GENERAL_LONG_SUMMARY_PROMPT = """
+Provide a detailed analysis covering:
+
+        1. Document Type and Purpose
+        2. Parties and Their Roles
+        3. Key Terms and Conditions
+        4. Financial Obligations
+        5. Performance Requirements
+        6. Important Dates and Deadlines
+        7. Termination Conditions
+        8. Special Provisions
+        9. Next Steps or Required Actions
+
+        Include specific references to sections and clauses where relevant.
+        """
 
 GENERAL_RISK_ANALYSIS_PROMPT = """
 Analyze this legal document for risks considering the following aspects:
@@ -1403,7 +1460,9 @@ LONG_SUMMARY_PROMPTS = {
    - Acceptance criteria
    - Monitoring rights
    - Reporting obligations
-   - Compliance verification"""
+   - Compliance verification""",
+
+   "None of the above":f"""{GENERAL_LONG_SUMMARY_PROMPT}"""
 }
 
 RISK_ANALYSIS_PROMPTS = {
@@ -1849,7 +1908,6 @@ C. Business & Operational Risks:
    - Examine quality control
    - Analyze capacity commitments"""
 }
-
 # Analysis prompts
 CONFLICT_ANALYSIS_PROMPT = """
 Analyze the following documents for two tasks:
@@ -1891,22 +1949,6 @@ Analyze the following documents for two tasks:
 
     Documents:
     """
-
-GENERAL_LONG_SUMMARY_PROMPT = """
-Provide a detailed analysis covering:
-
-        1. Document Type and Purpose
-        2. Parties and Their Roles
-        3. Key Terms and Conditions
-        4. Financial Obligations
-        5. Performance Requirements
-        6. Important Dates and Deadlines
-        7. Termination Conditions
-        8. Special Provisions
-        9. Next Steps or Required Actions
-
-        Include specific references to sections and clauses where relevant.
-        """
 
 DRAFT_PROMPT = """
 Based on the provided context, draft a professional legal communication. Choose the appropriate format:
@@ -1987,3 +2029,675 @@ RESPONSE GUIDELINES:
 
 Now analyze the provided context and address the query.
 '''
+
+# Document Categories
+# DOCUMENT_CATEGORIES = [
+#     "Commercial Agreements",
+#     "Employment Documents", 
+#     "Corporate Documents",
+#     "Financial Documents",
+#     "Property Documents",
+#     "Intellectual Property Documents",
+#     "Regulatory Documents",
+#     "Legal Proceedings"
+# ]
+
+# Category-based Short Summary Prompts
+# CATEGORY_SHORT_SUMMARY_PROMPTS = {
+#     "Commercial Agreements": """
+# Generate a focused summary of this commercial document addressing:
+
+# 1. Agreement Purpose
+#    - Primary objective and transaction type
+#    - Key deliverables or services
+#    - Scope and limitations
+
+# 2. Key Commercial Terms
+#    - Financial arrangements
+#    - Payment terms and conditions
+#    - Pricing mechanisms
+#    - Performance metrics
+
+# 3. Party Obligations
+#    - Key responsibilities
+#    - Delivery requirements
+#    - Quality standards
+#    - Timeline commitments
+
+# 4. Risk Management
+#    - Liability provisions
+#    - Indemnification terms
+#    - Insurance requirements
+#    - Warranty terms
+
+# 5. Operational Framework
+#    - Implementation requirements
+#    - Reporting obligations
+#    - Governance structure
+#    - Change management
+
+# 6. Term and Termination
+#    - Duration and renewal
+#    - Termination rights
+#    - Exit provisions
+#    - Post-termination obligations
+#     """,
+
+#     "Employment Documents": """
+# Generate a focused summary of this employment document addressing:
+
+# 1. Position Details
+#    - Role and title
+#    - Department/team
+#    - Reporting structure
+#    - Work location
+
+# 2. Employment Terms
+#    - Start date
+#    - Employment type
+#    - Work schedule
+#    - Probation period
+
+# 3. Compensation Package
+#    - Base compensation
+#    - Variable components
+#    - Benefits overview
+#    - Equity/stock options
+
+# 4. Performance & Development
+#    - Key responsibilities
+#    - Performance metrics
+#    - Training provisions
+#    - Career development
+
+# 5. Key Policies
+#    - Confidentiality requirements
+#    - IP ownership
+#    - Non-compete terms
+#    - Code of conduct
+
+# 6. Administrative Details
+#    - Notice periods
+#    - Leave policies
+#    - Expense policies
+#    - Required documentation
+#     """,
+
+#     "Corporate Documents": """
+# Generate a focused summary of this corporate document addressing:
+
+# 1. Document Purpose
+#    - Type of corporate action
+#    - Legal framework
+#    - Key objectives
+#    - Affected stakeholders
+
+# 2. Corporate Structure
+#    - Entity details
+#    - Ownership structure
+#    - Management framework
+#    - Governance mechanisms
+
+# 3. Key Provisions
+#    - Rights and obligations
+#    - Decision-making process
+#    - Voting mechanisms
+#    - Control provisions
+
+# 4. Financial Aspects
+#    - Capital structure
+#    - Financial obligations
+#    - Distribution rights
+#    - Economic terms
+
+# 5. Compliance Framework
+#    - Regulatory requirements
+#    - Reporting obligations
+#    - Audit provisions
+#    - Record-keeping
+
+# 6. Implementation Details
+#    - Effective date
+#    - Required approvals
+#    - Filing requirements
+#    - Next steps
+#     """,
+
+#     "Financial Documents": """
+# Generate a focused summary of this financial document addressing:
+
+# 1. Transaction Overview
+#    - Financial instrument type
+#    - Transaction structure
+#    - Key parties
+#    - Purpose and use of funds
+
+# 2. Financial Terms
+#    - Principal amounts
+#    - Interest/returns
+#    - Payment schedule
+#    - Fee structure
+
+# 3. Security Structure
+#    - Collateral/security
+#    - Guarantees
+#    - Priority ranking
+#    - Enforcement rights
+
+# 4. Conditions Framework
+#    - Precedent conditions
+#    - Covenants
+#    - Representations
+#    - Events of default
+
+# 5. Risk Allocation
+#    - Default remedies
+#    - Indemnification
+#    - Insurance requirements
+#    - Force majeure
+
+# 6. Administrative Terms
+#    - Reporting requirements
+#    - Compliance obligations
+#    - Agent roles
+#    - Amendment provisions
+#     """,
+
+#     "Property Documents": """
+# Generate a focused summary of this property document addressing:
+
+# 1. Property Details
+#    - Asset description
+#    - Location/jurisdiction
+#    - Rights included
+#    - Restrictions/easements
+
+# 2. Transaction Terms
+#    - Deal structure
+#    - Consideration
+#    - Payment terms
+#    - Closing conditions
+
+# 3. Property Rights
+#    - Ownership/usage rights
+#    - Maintenance obligations
+#    - Improvement rights
+#    - Access provisions
+
+# 4. Risk Allocation
+#    - Title warranties
+#    - Property condition
+#    - Environmental matters
+#    - Regulatory compliance
+
+# 5. Operational Terms
+#    - Management rights
+#    - Service provisions
+#    - Utility responsibilities
+#    - Insurance requirements
+
+# 6. Term Structure
+#    - Duration/expiration
+#    - Renewal rights
+#    - Termination provisions
+#    - Post-termination obligations
+#     """,
+
+#     "Intellectual Property Documents": """
+# Generate a focused summary of this IP document addressing:
+
+# 1. IP Scope
+#    - IP type and description
+#    - Protection scope
+#    - Territory coverage
+#    - Duration of rights
+
+# 2. Rights Framework
+#    - Granted rights
+#    - Usage restrictions
+#    - Sublicensing terms
+#    - Improvement rights
+
+# 3. Commercial Terms
+#    - Payment structure
+#    - Royalty calculations
+#    - Reporting requirements
+#    - Audit rights
+
+# 4. Protection Measures
+#    - Confidentiality terms
+#    - Security requirements
+#    - Quality control
+#    - Enforcement rights
+
+# 5. Compliance Framework
+#    - Regulatory requirements
+#    - Registration obligations
+#    - Maintenance duties
+#    - Record-keeping
+
+# 6. Term Structure
+#    - Duration and renewal
+#    - Termination rights
+#    - Post-termination rights
+#    - Survival provisions
+#     """,
+
+#     "Regulatory Documents": """
+# Generate a focused summary of this regulatory document addressing:
+
+# 1. Regulatory Framework
+#    - Governing regulations
+#    - Scope of application
+#    - Compliance requirements
+#    - Regulatory authority
+
+# 2. Obligations
+#    - Primary requirements
+#    - Reporting duties
+#    - Documentation needs
+#    - Timeline commitments
+
+# 3. Compliance Measures
+#    - Required actions
+#    - Prohibited activities
+#    - Monitoring requirements
+#    - Audit provisions
+
+# 4. Risk Management
+#    - Liability exposure
+#    - Penalty provisions
+#    - Remediation requirements
+#    - Appeal rights
+
+# 5. Implementation
+#    - Effective dates
+#    - Transition periods
+#    - Required resources
+#    - Training needs
+
+# 6. Administrative Details
+#    - Record-keeping
+#    - Filing requirements
+#    - Contact information
+#    - Update procedures
+#     """,
+
+#     "Legal Proceedings": """
+# Generate a focused summary of this legal proceeding document addressing:
+
+# 1. Proceeding Overview
+#    - Type of proceeding
+#    - Forum/jurisdiction
+#    - Parties involved
+#    - Key issues
+
+# 2. Claims/Positions
+#    - Main allegations
+#    - Legal basis
+#    - Relief sought
+#    - Defenses raised
+
+# 3. Procedural Aspects
+#    - Timeline/deadlines
+#    - Required filings
+#    - Evidence rules
+#    - Hearing details
+
+# 4. Resolution Framework
+#    - Settlement options
+#    - Decision process
+#    - Appeal rights
+#    - Enforcement mechanisms
+
+# 5. Resource Requirements
+#    - Legal representation
+#    - Expert needs
+#    - Cost implications
+#    - Time commitments
+
+# 6. Next Steps
+#    - Immediate actions
+#    - Key deadlines
+#    - Required responses
+#    - Strategic considerations
+#     """
+# }
+
+# CATEGORY_LONG_SUMMARY_PROMPTS = {
+#     "Commercial Agreements": """Analyze this document with comprehensive focus on:
+
+# 1. Service Scope and Standards
+#    - Service description detail
+#    - Performance standards
+#    - Deliverable specifications
+#    - Quality requirements
+#    - Timeline commitments
+#    - Acceptance criteria
+
+# 2. Commercial Terms
+#    - Fee structure analysis
+#    - Payment terms
+#    - Expense treatment
+#    - Rate adjustment mechanisms
+#    - Invoice requirements
+#    - Late payment consequences
+
+# 3. Performance Management
+#    - KPI framework
+#    - Service levels
+#    - Reporting requirements
+#    - Review procedures
+#    - Remediation process
+#    - Continuous improvement
+
+# 4. Risk Allocation
+#    - Warranties scope
+#    - Indemnification provisions
+#    - Limitation of liability
+#    - Insurance requirements
+#    - Force majeure terms
+#    - Termination rights
+
+# 5. Intellectual Property
+#    - IP ownership
+#    - License grants
+#    - Third-party rights
+#    - Work product rights
+#    - Background IP
+#    - Improvements rights""",
+
+#     "Employment Documents": """Analyze this document with detailed focus on:
+
+# 1. Employment Terms & Conditions
+#    - Position description and duties
+#    - Employment status and classification
+#    - Work location and schedule
+#    - Probationary period terms
+#    - Reporting relationships
+#    - Performance expectations
+
+# 2. Compensation & Benefits
+#    - Base salary structure
+#    - Bonus/commission plans
+#    - Equity compensation
+#    - Benefits package details
+#    - Expense reimbursement
+#    - Salary review process
+
+# 3. Compliance & Policies
+#    - Workplace policies
+#    - Code of conduct
+#    - Confidentiality obligations
+#    - Data protection requirements
+#    - Health and safety
+#    - Regulatory compliance
+
+# 4. Intellectual Property & Restrictions
+#    - IP assignment provisions
+#    - Non-compete terms
+#    - Non-solicitation
+#    - Confidentiality scope
+#    - Work product ownership
+#    - Post-employment restrictions
+
+# 5. Administrative Framework
+#    - Leave entitlements
+#    - Time recording
+#    - Travel requirements
+#    - Training obligations
+#    - Performance review process
+#    - Disciplinary procedures""",
+
+#     "Corporate Documents": """Analyze this document with comprehensive focus on:
+
+# 1. Corporate Structure & Governance
+#    - Entity formation details
+#    - Ownership structure
+#    - Management framework
+#    - Board composition
+#    - Voting rights
+#    - Control mechanisms
+
+# 2. Stakeholder Rights
+#    - Shareholder rights
+#    - Director duties
+#    - Officer responsibilities
+#    - Minority protections
+#    - Information rights
+#    - Participation rights
+
+# 3. Financial Framework
+#    - Capital structure
+#    - Share classes
+#    - Distribution rights
+#    - Investment terms
+#    - Valuation mechanisms
+#    - Exit provisions
+
+# 4. Operational Controls
+#    - Decision-making process
+#    - Reserved matters
+#    - Approval requirements
+#    - Reporting obligations
+#    - Audit rights
+#    - Amendment procedures
+
+# 5. Compliance & Risk
+#    - Regulatory requirements
+#    - Corporate compliance
+#    - Risk management
+#    - Insurance obligations
+#    - Indemnification
+#    - Dispute resolution""",
+
+#     "Financial Documents": """Analyze this document with detailed attention to:
+
+# 1. Transaction Structure
+#    - Facility type
+#    - Amount and currency
+#    - Purpose and use
+#    - Availability period
+#    - Drawdown conditions
+#    - Repayment terms
+
+# 2. Pricing & Payment
+#    - Interest calculation
+#    - Fee structure
+#    - Payment mechanics
+#    - Default interest
+#    - Break costs
+#    - Tax provisions
+
+# 3. Security Package
+#    - Security structure
+#    - Guarantee framework
+#    - Collateral coverage
+#    - Priority arrangements
+#    - Perfection requirements
+#    - Enforcement rights
+
+# 4. Covenants & Conditions
+#    - Financial covenants
+#    - Operational covenants
+#    - Information requirements
+#    - Representations
+#    - Events of default
+#    - Remedies
+
+# 5. Administrative Framework
+#    - Agent roles
+#    - Lender rights
+#    - Transfer provisions
+#    - Majority decisions
+#    - Amendment process
+#    - Notices""",
+
+#     "Property Documents": """Analyze this document with comprehensive focus on:
+
+# 1. Property Details
+#    - Legal description
+#    - Title status
+#    - Permitted use
+#    - Zoning compliance
+#    - Environmental status
+#    - Physical condition
+
+# 2. Transaction Terms
+#    - Purchase price/rent
+#    - Payment structure
+#    - Deposit requirements
+#    - Adjustments
+#    - Tax treatment
+#    - Closing costs
+
+# 3. Rights & Obligations
+#    - Access rights
+#    - Maintenance duties
+#    - Improvement rights
+#    - Service obligations
+#    - Insurance requirements
+#    - Regulatory compliance
+
+# 4. Risk Allocation
+#    - Warranties
+#    - Indemnification
+#    - Environmental liability
+#    - Casualty provisions
+#    - Condemnation
+#    - Force majeure
+
+# 5. Operational Framework
+#    - Management rights
+#    - Service contracts
+#    - Utility responsibilities
+#    - Common areas
+#    - Rules and regulations
+#    - Emergency procedures""",
+
+#     "Intellectual Property Documents": """Analyze this document with detailed focus on:
+
+# 1. IP Rights Framework
+#    - IP description
+#    - Protection scope
+#    - Territory coverage
+#    - Duration
+#    - Registration status
+#    - Maintenance requirements
+
+# 2. Usage Rights
+#    - License scope
+#    - Field of use
+#    - Sublicense rights
+#    - Modification rights
+#    - Distribution rights
+#    - Reservation of rights
+
+# 3. Commercial Terms
+#    - Payment structure
+#    - Royalty calculations
+#    - Minimum payments
+#    - Reporting requirements
+#    - Audit rights
+#    - Tax treatment
+
+# 4. Quality & Control
+#    - Quality standards
+#    - Approval requirements
+#    - Monitoring rights
+#    - Marketing requirements
+#    - Compliance obligations
+#    - Review procedures
+
+# 5. Protection & Enforcement
+#    - Infringement handling
+#    - Defense obligations
+#    - Cooperation requirements
+#    - Confidentiality
+#    - Security measures
+#    - Remedies""",
+
+#     "Regulatory Documents": """Analyze this document with comprehensive attention to:
+
+# 1. Regulatory Framework
+#    - Applicable regulations
+#    - Jurisdiction scope
+#    - Authority requirements
+#    - Compliance standards
+#    - Implementation timeline
+#    - Review process
+
+# 2. Compliance Requirements
+#    - Operational standards
+#    - Reporting obligations
+#    - Documentation needs
+#    - Testing requirements
+#    - Audit procedures
+#    - Record retention
+
+# 3. Risk Management
+#    - Risk assessment
+#    - Control measures
+#    - Monitoring requirements
+#    - Incident reporting
+#    - Remediation procedures
+#    - Emergency response
+
+# 4. Implementation Framework
+#    - Timeline requirements
+#    - Resource allocation
+#    - Training needs
+#    - System requirements
+#    - Testing protocols
+#    - Review procedures
+
+# 5. Administrative Controls
+#    - Responsibility assignment
+#    - Oversight mechanisms
+#    - Reporting structure
+#    - Documentation requirements
+#    - Update procedures
+#    - Communication protocols""",
+
+#     "Legal Proceedings": """Analyze this document with detailed focus on:
+
+# 1. Case Framework
+#    - Proceeding type
+#    - Jurisdiction
+#    - Parties involved
+#    - Claims/defenses
+#    - Relief sought
+#    - Legal basis
+
+# 2. Procedural Requirements
+#    - Filing deadlines
+#    - Service requirements
+#    - Evidence rules
+#    - Discovery scope
+#    - Hearing procedures
+#    - Appeal rights
+
+# 3. Evidence & Arguments
+#    - Key evidence
+#    - Witness requirements
+#    - Expert testimony
+#    - Documentary proof
+#    - Legal precedents
+#    - Counter-arguments
+
+# 4. Resolution Framework
+#    - Settlement options
+#    - Decision process
+#    - Enforcement mechanisms
+#    - Appeal procedures
+#    - Alternative resolution
+#    - Time limitations
+
+# 5. Resource Requirements
+#    - Legal representation
+#    - Expert needs
+#    - Cost estimates
+#    - Time commitments
+#    - Document management
+#    - Support services"""
+# }
