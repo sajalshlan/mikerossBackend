@@ -392,6 +392,8 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
             prompt = f"""
             {SHORT_SUMMARY_PROMPTS[doc_type]}
            Important: Provide your analysis directly without any disclaimers or comments about document classification or type mismatches. Focus only on analyzing the actual content and terms of the document.
+
+           Provide only the analysis, no other text or comments.
             """
         else:
             logger.info("Using general summary prompt for short summary")
@@ -406,6 +408,8 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
             prompt = f"""
             {LONG_SUMMARY_PROMPTS[doc_type]}
             Important: Provide your analysis directly without any disclaimers or comments about document classification or type mismatches. Focus only on analyzing the actual content and terms of the document.
+
+            Provide only the analysis, no other text or comments.
             """
         else:
             logger.info("Using general summary prompt for long summary")
@@ -508,7 +512,7 @@ def gemini_call(text, prompt):
     system_prompt = """You are a highly experienced legal assistant to the General Counsel of a Fortune 500 company."""
 
     try:
-        model = genai.GenerativeModel('gemini-1.5-pro')
+        model = genai.GenerativeModel('gemini-2.0-flash-exp')
         response = model.generate_content(
             [system_prompt, text, prompt],
             generation_config=genai.types.GenerationConfig(
