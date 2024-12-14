@@ -1931,7 +1931,7 @@ Analyze the following documents for two tasks:
    - Keep citations concise (30-40 characters)
    - Never combine multiple references within a single bracket
    - Do not use ellipsis (...), just use the first part of the text
-   - Always include the filename after each citation
+   - Always include the filename after each citation WITHOUT ANY SPACE/GAP
 
    Provide your analysis in the following format:
     Common Party Check:
@@ -2028,9 +2028,10 @@ CITATION GUIDELINES:
 - Always use the exact text as it appears in the document, do not change it or paraphrase it.
 - Never include formatting characters (**, `, etc.) in citations
 - Keep citations concise (30-40 characters)
-- Never combine multiple references within a single bracket like [[amongst: Essilor India Private Limited...and The Persons of the Gupta Family]], use proper formatting and only one exact citation per double bracket.
+- NEVER combine multiple references within a single bracket like [[amongst: Essilor India Private Limited...and The Persons of the Gupta Family]], use proper formatting and only one exact citation per double bracket.
 - Do not use ellipsis (...), just use the first part of the text
-- Always include the filename after each citation
+- Always include the filename after each citation WITHOUT ANY SPACE/GAP
+
 
 EXAMPLE RESPONSE:
 The contract includes **important provisions** about liability [[The party shall be liable]]{{Agreement.pdf}} and termination [[Agreement may be terminated]]{{Agreement.pdf}}.
