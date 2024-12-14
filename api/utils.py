@@ -336,7 +336,7 @@ def classify_document(text: str) -> str:
     choose the "None of the above" category present at the end of the list. Provide ONLY the category name, no other text or explanation.
     """.format("\n".join(DOCUMENT_TYPES))
     try:
-        result = claude_call(text, classification_prompt)
+        result = claude_call_haiku(text, classification_prompt)
         classified_type = result.strip()
         print(f"classified_type: {classified_type}")
         if classified_type in DOCUMENT_TYPES:
@@ -438,8 +438,12 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
         3. Never combine multiple references within a single bracket.
         4. Always use the exact text as it appears in the document to ensure searchability - do not paraphrase or summarize.
         5. Do not reference clause numbers (like "Clause 6.3") - instead use the actual text content from that clause.
-        6. Do this for every party.
-        7. Always include the filename after each citation in DOUBLE parentheses.
+        6. Always include the filename after each citation in DOUBLE curly braces.
+        7. Place citations at the end of each analysis point, not at the beginning.
+
+        Risk Exposure additional formatting rules:
+        Title/Risk Point: Clear description of the specific risk and its implications. Supporting citation: [[exact text from document]]{{{{filename}}}}
+
 
         Structure your response in the following specific format:
 
@@ -460,6 +464,7 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
         - Never include formatting characters in citations
         - Do not use ellipsis (...), just use the first part of the text
         - Maintain professional, clear language
+        - Always place citations at the end of the analysis point
         """
     
     elif analysis_type == 'ask':
