@@ -293,24 +293,24 @@ def perform_conflict_check(request):
     
     try:
         # First get parties for each document
-        parties_by_file = {}
-        for filename, text in texts.items():
-            parties_json = analyze_document_parties(text)
-            # Parse the JSON string into Python dict
-            parties = json.loads(parties_json)['parties']
-            parties_by_file[filename] = parties
+        # parties_by_file = {}
+        # for filename, text in texts.items():
+        #     parties_json = analyze_document_parties(text)
+        #     # Parse the JSON string into Python dict
+        #     parties = json.loads(parties_json)['parties']
+        #     parties_by_file[filename] = parties
         
-        print(f"parties_by_file: {parties_by_file}")
-        # Check for common parties using gemini flash
-        has_common = check_common_parties(parties_by_file)
-        print(f"has_common: {has_common}")
+        # print(f"parties_by_file: {parties_by_file}")
+        # # Check for common parties using gemini flash
+        # has_common = check_common_parties(parties_by_file)
+        # print(f"has_common: {has_common}")
 
-        answer = has_common['common_parties']
-        print(f"answer: {answer}")
+        # answer = has_common['common_parties']
+        # print(f"answer: {answer}")
         
         # Then perform the regular conflict analysis
-        # result = analyze_conflicts_and_common_parties(texts)
-        result = f"Common Parties: {answer}"
+        result = analyze_conflicts_and_common_parties(texts)
+        # result = f"Common Parties: {answer}"
         
         return Response({
             'success': True,

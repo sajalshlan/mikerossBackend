@@ -658,8 +658,6 @@ def analyze_conflicts_and_common_parties(texts: Dict[str, str]) -> str:
     prompt = CONFLICT_ANALYSIS_PROMPT
 
     for filename, content in texts.items():
-        print(f"filename: {filename}")
-        print(f"content: {content[:1000]}")
         prompt += f"\n\nFilename: {filename}\nContent:\n{content}"
 
     try:
