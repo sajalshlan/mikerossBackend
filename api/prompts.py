@@ -1914,9 +1914,26 @@ Analyze the following documents for two tasks:
     1. Determine if there is at least one common party present in all documents.
     2. If there is at least one common party, perform a conflict check across all documents.
 
-    For each document, identify any clauses or terms that may conflict with clauses or terms in the other documents.
+   CITATION FORMAT:
+   1. When referencing specific clauses or sections, always include the actual text content within [[double brackets]], not the clause numbers.
+      Example: "The agreement states [[The party shall be liable for all damages]]"
 
-    Provide your analysis in the following format:
+   2. Add the filename after the citation using {{filename}}:
+      Example: "As specified in [[The party shall be liable]]{{Agreement.pdf}}"
+
+   3. For multiple related references, use them separately:
+      - Single reference: [[The Seller shall deliver...]]{{Agreement.pdf}}
+      - Multiple references: [[The Buyer agrees to pay...]]{{Agreement.pdf}} and [[All disputes shall be...]]{{Agreement.pdf}}
+
+   CITATION GUIDELINES:
+   - Always use the exact text as it appears in the document, do not change it or paraphrase it.
+   - Never include formatting characters (**, `, etc.) in citations
+   - Keep citations concise (30-40 characters)
+   - Never combine multiple references within a single bracket
+   - Do not use ellipsis (...), just use the first part of the text
+   - Always include the filename after each citation
+
+   Provide your analysis in the following format:
     Common Party Check:
     [Yes/No] - There [is/are] [a common party/no common parties] involved across the selected documents.
 
@@ -1924,16 +1941,15 @@ Analyze the following documents for two tasks:
 
     (IMPORTANT NOTE: If yes, start your response from here)
 
-    Parties Involved: (send this in your response with a special tag like **Parties Involved**)
+    Common Parties Involved: (send this in your response with a special tag like **Common Parties Involved**)
     - [Name of common party 1]
     - [Name of common party 2]
     - ...
 
-
     Conflict Analysis:
     Document: [Filename1](send this in your response with a special tag like **Document Name**)
     Conflicts:
-    1. Clause [X] conflicts with [Filename2], Clause [Y]:
+    1. Clause [[exact text of conflicting clause]] conflicts with [[exact text of conflicting clause]]{{Filename2}}:
        - [Brief explanation of the conflict]
     2. ...
 
@@ -1941,9 +1957,7 @@ Analyze the following documents for two tasks:
     Conflicts:
     1. ...
 
-    If no conflicts are found for a document, state "No conflicts found."
-
-    If there is no common party, only provide the Common Party Check result.
+    If no conflicts are found for a document or no common parties are found, state "No conflicts found."
 
     Focus on significant conflicts that could impact the legal or business relationship between the parties involved.
 
@@ -2014,7 +2028,7 @@ CITATION GUIDELINES:
 - Always use the exact text as it appears in the document, do not change it or paraphrase it.
 - Never include formatting characters (**, `, etc.) in citations
 - Keep citations concise (30-40 characters)
-- Never combine multiple references within a single bracket
+- Never combine multiple references within a single bracket like [[amongst: Essilor India Private Limited...and The Persons of the Gupta Family]], use proper formatting and only one exact citation per double bracket.
 - Do not use ellipsis (...), just use the first part of the text
 - Always include the filename after each citation
 

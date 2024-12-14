@@ -11,6 +11,7 @@ import base64
 import tempfile
 import requests
 import zipfile
+import json
 from pdf2image import convert_from_bytes
 import google.generativeai as genai
 from PIL import Image
@@ -431,13 +432,14 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
 
         IMPORTANT REFERENCE RULES:
         1. When referencing specific clauses or sections, always include the actual text content (first 50-70 characters) within [[double brackets]], not the clause numbers.
-        2. For multiple related references, separate them with numbers like this:
-           - Single reference: [[The Seller shall deliver...]]
-           - Multiple references: [[The Buyer agrees to pay...]] [1] [[All disputes shall be...]] [2] [[This agreement shall be...]] [3]
+        2. Add the filename after each citation using {{{{filename}}}}:
+           - Single reference: [[The Seller shall deliver...]]{{{{Agreement.pdf}}}}
+           - Multiple references: [[The Buyer agrees to pay...]]{{{{Agreement.pdf}}}} [1] [[All disputes shall be...]]{{{{Agreement.pdf}}}} [2] [[This agreement shall be...]]{{{{Agreement.pdf}}}} [3]
         3. Never combine multiple references within a single bracket.
         4. Always use the exact text as it appears in the document to ensure searchability - do not paraphrase or summarize.
         5. Do not reference clause numbers (like "Clause 6.3") - instead use the actual text content from that clause.
         6. Do this for every party.
+        7. Always include the filename after each citation in DOUBLE parentheses.
 
         Structure your response in the following specific format:
 
@@ -453,7 +455,10 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
         IMPORTANT FORMATTING RULES:
         - Use ***** only for party names
         - For section headers, use **
-        - Include exact quotes using the format specified above
+        - Include exact quotes using the format specified above with filenames
+        - Keep citations concise (30-40 characters)
+        - Never include formatting characters in citations
+        - Do not use ellipsis (...), just use the first part of the text
         - Maintain professional, clear language
         """
     
@@ -506,6 +511,23 @@ def has_common_party(texts):
         logger.exception("Error checking for common party")
         return False
     
+def gemini_call_flash(text, prompt):
+    logger.info("Calling Gemini Flash API")
+    
+    system_prompt = """You are a highly experienced analyst who is great at analyzing documents and providing insights."""
+    
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    response = model.generate_content(
+        [system_prompt, text, prompt],
+        generation_config=genai.types.GenerationConfig(
+            temperature=0.1,
+            max_output_tokens=4000,
+            top_p=0.8,
+            top_k=40
+        )
+    )
+    return response.text
+
 def gemini_call(text, prompt):
     logger.info("Calling Gemini API")
     
@@ -513,15 +535,26 @@ def gemini_call(text, prompt):
 
     try:
         model = genai.GenerativeModel('gemini-2.0-flash-exp')
-        response = model.generate_content(
-            [system_prompt, text, prompt],
-            generation_config=genai.types.GenerationConfig(
+        if(text == ""):
+            response = model.generate_content(
+                [system_prompt, prompt],
+                generation_config=genai.types.GenerationConfig(
                 temperature=0.1,  # Slightly increased for more natural language while maintaining precision
                 max_output_tokens=4000,  # Increased token limit for more comprehensive responses
                 top_p=0.8,  # Added for better response quality
                 top_k=40,  # Added for better response diversity while maintaining relevance
+                )
             )
-        )
+        else:
+            response = model.generate_content(
+                [system_prompt, text, prompt],
+                generation_config=genai.types.GenerationConfig(
+                temperature=0.1,  # Slightly increased for more natural language while maintaining precision
+                max_output_tokens=4000,  # Increased token limit for more comprehensive responses
+                top_p=0.8,  # Added for better response quality
+                top_k=40,  # Added for better response diversity while maintaining relevance
+                )
+            )
         logger.info("Gemini API call successful")
         return response.text
     except Exception as e:
@@ -553,6 +586,24 @@ def claude_call(text, prompt):
         logger.error(f"Error calling Claude API: {str(e)}")
         raise Exception(f"An error occurred while calling Claude API: {e}")
     
+def claude_call_haiku(text, prompt):
+    logger.info("Calling Claude HAIKU API")
+    
+    system_prompt = """You are a highly experienced analyst who is great at analyzing documents and providing insights."""
+    
+    client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+    response = client.messages.create(
+        model="claude-3-5-haiku-latest",
+        max_tokens=4000,
+        temperature=0.1,
+        system=system_prompt,
+        messages=[{
+            "role": "user",
+            "content": f"{prompt}\n\nDocument:\n{text}"
+        }]
+    )
+    return response.content[0].text
+
 def claude_call_explanation(prompt):
     logger.info("Calling Claude SONNET API")
 
@@ -607,7 +658,9 @@ def analyze_conflicts_and_common_parties(texts: Dict[str, str]) -> str:
     prompt = CONFLICT_ANALYSIS_PROMPT
 
     for filename, content in texts.items():
-        prompt += f"\n\nFilename: {filename}\nContent (truncated):\n{content}"
+        print(f"filename: {filename}")
+        print(f"content: {content[:1000]}")
+        prompt += f"\n\nFilename: {filename}\nContent:\n{content}"
 
     try:
         result = gemini_call("", prompt)
@@ -719,13 +772,59 @@ def analyze_document_parties(text: str) -> list:
     """
     
     try:
-        print("calling claude")
-        result = gemini_call(text, prompt)
-        (f"result: {result}")
+        result = claude_call_haiku(text, prompt)
+        print(f"result of party analysis: {result}")
         return result
     except Exception as e:
         logger.error(f"Error in party analysis: {str(e)}")
         raise
+
+def check_common_parties(parties_by_file):
+    """
+    Check if there are common parties between documents using Gemini Flash.
+    Returns both whether there are common parties and the list of common parties.
+    """
+    prompt = """
+    Analyze the following parties from different documents and identify any common parties.
+    
+    Document Parties:
+    """
+    
+    # Format the parties data for the prompt
+    for filename, parties in parties_by_file.items():
+        prompt += f"\n\n{filename}:\n"
+        for party in parties:
+            prompt += f"- {party['name']} ({party['role']})\n"
+    
+    prompt += """
+    
+    Provide your response in the following JSON format:
+    {
+        "has_common_parties": "Yes/No",
+        "common_parties": [
+            {
+                "name": "party name",
+                "roles": ["role in doc1", "role in doc2"]
+            }
+        ]
+    }
+    
+    Only return the JSON, no other text.
+    """
+    
+    try:
+        result = claude_call_haiku("", prompt)
+        parsed_result = json.loads(result)
+        return {
+            'has_common_parties': parsed_result['has_common_parties'].lower() == 'yes',
+            'common_parties': parsed_result['common_parties']
+        }
+    except Exception as e:
+        logger.error(f"Error checking common parties: {e}")
+        return {
+            'has_common_parties': False,
+            'common_parties': []
+        }
 
 
 

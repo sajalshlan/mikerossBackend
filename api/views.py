@@ -4,6 +4,7 @@ import base64
 import gc
 import time
 import random
+import json
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view, permission_classes
@@ -19,7 +20,8 @@ from .utils import (
     analyze_document_parties,
     ResourceMonitor,
     claude_call_explanation,
-    claude_call_opus
+    claude_call_opus,
+    check_common_parties
 )
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -218,7 +220,11 @@ def perform_analysis(request):
     try:
         analysis_type = request.data.get('analysis_type')
         text = request.data.get('text')
+        filename = request.data.get('filename')
         ocr_text = request.data.get('ocr_text')
+
+        text = f'Document Filename: {filename}\n\n{text}'
+        
         # Add validation with specific error messages
         if not analysis_type:
             logger.warning("Missing analysis_type")
@@ -252,7 +258,6 @@ def perform_analysis(request):
             else:
                 # If no referenced text, use document context and include history if available
                 context_parts.append(f'Document Context:\n{text}')
-                
                 if include_history:
                     context_parts.append(f'Previous Conversation (last 10 messages):\n{include_history}')
                     context_parts.append('Please provide a response considering both the document context and the conversation history.')
@@ -287,7 +292,26 @@ def perform_conflict_check(request):
         )
     
     try:
-        result = analyze_conflicts_and_common_parties(texts)
+        # First get parties for each document
+        parties_by_file = {}
+        for filename, text in texts.items():
+            parties_json = analyze_document_parties(text)
+            # Parse the JSON string into Python dict
+            parties = json.loads(parties_json)['parties']
+            parties_by_file[filename] = parties
+        
+        print(f"parties_by_file: {parties_by_file}")
+        # Check for common parties using gemini flash
+        has_common = check_common_parties(parties_by_file)
+        print(f"has_common: {has_common}")
+
+        answer = has_common['common_parties']
+        print(f"answer: {answer}")
+        
+        # Then perform the regular conflict analysis
+        # result = analyze_conflicts_and_common_parties(texts)
+        result = f"Common Parties: {answer}"
+        
         return Response({
             'success': True,
             'result': result
