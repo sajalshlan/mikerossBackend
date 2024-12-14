@@ -513,15 +513,26 @@ def gemini_call(text, prompt):
 
     try:
         model = genai.GenerativeModel('gemini-2.0-flash-exp')
-        response = model.generate_content(
-            [system_prompt, text, prompt],
-            generation_config=genai.types.GenerationConfig(
+        if(text == ""):
+            response = model.generate_content(
+                [system_prompt, prompt],
+                generation_config=genai.types.GenerationConfig(
                 temperature=0.1,  # Slightly increased for more natural language while maintaining precision
                 max_output_tokens=4000,  # Increased token limit for more comprehensive responses
                 top_p=0.8,  # Added for better response quality
                 top_k=40,  # Added for better response diversity while maintaining relevance
+                )
             )
-        )
+        else:
+            response = model.generate_content(
+                [system_prompt, text, prompt],
+                generation_config=genai.types.GenerationConfig(
+                temperature=0.1,  # Slightly increased for more natural language while maintaining precision
+                max_output_tokens=4000,  # Increased token limit for more comprehensive responses
+                top_p=0.8,  # Added for better response quality
+                top_k=40,  # Added for better response diversity while maintaining relevance
+                )
+            )
         logger.info("Gemini API call successful")
         return response.text
     except Exception as e:
