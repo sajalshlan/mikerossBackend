@@ -19,4 +19,5 @@ urlpatterns = [
     path('analyze_parties/', views.analyze_parties, name='analyze_parties'),
     path('redraft_text/', views.redraft_text, name='redraft_text'),
     path('brainstorm_chat/', views.brainstorm_chat, name='brainstorm_chat'),
+    path('preview_pdf_as_docx/', views.preview_pdf_as_docx, name='preview_pdf_as_docx'),
 ]

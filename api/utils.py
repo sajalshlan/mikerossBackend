@@ -31,6 +31,7 @@ from .prompts import (
     DRAFT_PROMPT,
     ASK_PROMPT,
 )
+from pdf2docx import Converter
 
 logger = logging.getLogger(__name__)
 load_dotenv()
@@ -965,6 +966,39 @@ Provide your analysis in this structure:
             analyses[party['name']] = f"Error in analysis: {str(e)}"
     
     return analyses
+
+def convert_pdf_to_docx(pdf_file_path):
+    """
+    Converts PDF to DOCX and returns the content as base64
+    """
+    try:
+        with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as temp_docx:
+            # Convert PDF to DOCX
+            cv = Converter(pdf_file_path)
+            cv.convert(temp_docx.name)
+            cv.close()
+            
+            # Read the converted file
+            with open(temp_docx.name, 'rb') as docx_file:
+                docx_content = docx_file.read()
+                
+            # Convert to base64
+            base64_content = base64.b64encode(docx_content).decode('utf-8')
+            
+            return {
+                'success': True,
+                'content': base64_content,
+                'mime_type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e)
+        }
+    finally:
+        # Cleanup
+        if os.path.exists(temp_docx.name):
+            os.remove(temp_docx.name)
 
 
 

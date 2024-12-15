@@ -22,13 +22,15 @@ from .utils import (
     claude_call_explanation,
     claude_call_opus,
     check_common_parties,
-    analyze_conflicts
+    analyze_conflicts,
+    convert_pdf_to_docx
 )
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import UserSerializer, RegisterSerializer, AcceptTermsSerializer
 from .models import Document, User
+import tempfile
 
 logger = logging.getLogger(__name__)
 
@@ -250,6 +252,7 @@ def perform_analysis(request):
             context_parts = []
             
             if referenced_text:
+                print(f"referenced_text: {referenced_text}")
                 # If there's referenced text, use it as primary context
                 context_parts.extend([
                     f'Selected Text for Reference:\n{referenced_text}',
@@ -762,3 +765,31 @@ def brainstorm_chat(request):
         del document_content
         del prompt
         resource_monitor.force_cleanup()
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def preview_pdf_as_docx(request):
+    """
+    Converts PDF to DOCX for preview purposes
+    """
+    file = request.FILES.get('file')
+    if not file:
+        return Response({'error': 'No file provided'}, status=400)
+        
+    try:
+        # Save uploaded file temporarily
+        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_pdf:
+            for chunk in file.chunks():
+                temp_pdf.write(chunk)
+                
+        # Convert to DOCX
+        result = convert_pdf_to_docx(temp_pdf.name)
+        
+        if result['success']:
+            return Response(result)
+        else:
+            return Response({'error': result['error']}, status=500)
+    finally:
+        if os.path.exists(temp_pdf.name):
+            os.remove(temp_pdf.name)
