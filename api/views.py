@@ -21,7 +21,8 @@ from .utils import (
     ResourceMonitor,
     claude_call_explanation,
     claude_call_opus,
-    check_common_parties
+    check_common_parties,
+    analyze_conflicts
 )
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -293,25 +294,51 @@ def perform_conflict_check(request):
     
     try:
         # First get parties for each document
-        # parties_by_file = {}
-        # for filename, text in texts.items():
-        #     parties_json = analyze_document_parties(text)
-        #     # Parse the JSON string into Python dict
-        #     parties = json.loads(parties_json)['parties']
-        #     parties_by_file[filename] = parties
+        parties_by_file = {}
+        for filename, text in texts.items():
+            parties_json = analyze_document_parties(text)
+            # Parse the JSON string into Python dict
+            parties = json.loads(parties_json)['parties']
+            parties_by_file[filename] = parties
         
-        # print(f"parties_by_file: {parties_by_file}")
-        # # Check for common parties using gemini flash
-        # has_common = check_common_parties(parties_by_file)
+        print(f"parties_by_file: {parties_by_file}")
+        # Check for common parties using gemini flash
+        has_common = check_common_parties(parties_by_file)
+        logger.info(f"Common parties check result: {has_common}")
+
+        formatted_texts = ""
+        for filename, content in texts.items():
+            formatted_texts += f"\nDocument: {filename}\n\n{content}\n"
+            formatted_texts += "-" * 50 + "\n\n" 
+
         # print(f"has_common: {has_common}")
 
         # answer = has_common['common_parties']
         # print(f"answer: {answer}")
         
         # Then perform the regular conflict analysis
-        result = analyze_conflicts_and_common_parties(texts)
-        # result = f"Common Parties: {answer}"
+        # result = analyze_conflicts_and_common_parties(texts)
+        common_parties = has_common['common_parties']
+        logger.info(f"Common parties identified: {common_parties}")
         
+        # Analyze conflicts for common parties
+        if common_parties:
+            conflict_analyses = analyze_conflicts(formatted_texts,common_parties)
+            logger.info(f"Conflict analyses completed: {conflict_analyses}")
+            
+            result = {
+                'has_common_parties': True,
+                'common_parties': common_parties,
+                'analyses': conflict_analyses
+            }
+        else:
+            result = {
+                'has_common_parties': False,
+                'common_parties': [],
+                'analyses': {}
+            }
+        
+        logger.info(f"Final result structure: {result}")
         return Response({
             'success': True,
             'result': result

@@ -607,6 +607,41 @@ def claude_call_haiku(text, prompt):
             "content": f"{prompt}\n\nDocument:\n{text}"
         }]
     )
+    print(response.usage.input_tokens)
+    print(response.usage.output_tokens)
+    return response.content[0].text
+
+def claude_call_cache(text, prompt):
+    logger.info("Calling Claude SONNET API with prompt caching")
+    
+    system_prompt = """You are a highly experienced analyst who is great at analyzing documents and providing insights."""
+    
+    client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+    response = client.beta.prompt_caching.messages.create(
+        model="claude-3-5-sonnet-latest",
+        max_tokens=4000,
+        temperature=0.1,
+        system=[
+            {
+                "type": "text",
+                "text": system_prompt
+            },
+            {
+                "type": "text", 
+                "text": text,
+                "cache_control": {"type": "ephemeral"}
+            }
+        ],
+        messages=[{
+            "role": "user",
+            "content": prompt
+        }]
+    )
+    print(response.usage.cache_creation_input_tokens)
+    print(response.usage.cache_read_input_tokens)
+    print(response.usage.input_tokens)
+    print(response.usage.output_tokens)
+
     return response.content[0].text
 
 def claude_call_explanation(prompt):
@@ -770,8 +805,6 @@ def analyze_document_parties(text: str) -> list:
     }
 
     just the parties and roles, no other text
-    
-    Document text:
     """
     
     try:
@@ -807,7 +840,10 @@ def check_common_parties(parties_by_file):
         "common_parties": [
             {
                 "name": "party name",
-                "roles": ["role in doc1", "role in doc2"]
+                "roles": [
+                    {"role": "role1", "filename": "doc1.pdf"},
+                    {"role": "role2", "filename": "doc2.pdf"}
+                ]
             }
         ]
     }
@@ -828,6 +864,107 @@ def check_common_parties(parties_by_file):
             'has_common_parties': False,
             'common_parties': []
         }
+
+def analyze_conflicts(text, common_parties):
+    """
+    Analyzes potential conflicts of interest for each common party.
+    """
+    analyses = {}
+    
+    for party in common_parties:
+        prompt = f"""
+        As a legal expert, analyze the potential conflicts of interest and compliance risks for the following party 
+        based on their different roles across multiple documents:
+        
+        Party: {party['name']}
+        Roles across documents:
+        """
+        
+        # Add this party's roles to the prompt
+        for role_info in party['roles']:
+            prompt += f"- {role_info['role']} in {role_info['filename']}\n"
+            
+        prompt += """
+        CITATION REQUIREMENTS:
+        1. When referencing document text:
+           - Include exact text in [[double brackets]]
+           - Add filename after citation in {{curly braces}}
+           - Example: [[The party shall be liable]]{{contract1.pdf}}
+        
+        2. Citation Guidelines:
+           - Use exact text as it appears, no paraphrasing
+           - Keep citations concise (30-40 characters)
+           - Never combine multiple references in one bracket
+           - Include filename immediately after each citation
+           - Do not use ellipsis, use first part of relevant text
+           - No formatting characters in citations
+        
+        Additional formatting rules for every party:
+        Title/Risk Point: Clear description of the specific conflict/breach and its implications. Supporting citation: [[exact text from document]]{{{{filename}}}}
+        Never use citation as your analysis, use it as a reference to the specific clause in the document at the end to support your analysis and not as a replacement to analysis content.
+Provide your analysis in this structure:
+        For the party, ANALYZE ACROSS ALL PROVIDED DOCUMENTS in which party is involved:
+
+        1. OBLIGATION MAPPING:
+        - Extract all binding commitments of [TARGET PARTY]:
+            * Non-compete restrictions (scope, territory, duration)
+            * Confidentiality obligations
+            * Exclusivity commitments 
+            * Performance requirements
+            * Use/disclosure limitations
+            * Service/delivery obligations
+
+        2. CONFLICT IDENTIFICATION:
+        - Cross-reference obligations to identify:
+            * Direct conflicts between commitments
+            * Indirect/implied conflicts through performance
+            * Timing overlaps creating impossibility
+            * Geographic/territorial conflicts
+            * Industry/sector conflicts
+        - For each conflict:
+            * Cite specific clauses in conflict
+            * Explain precise nature of incompatibility
+            * Identify triggering scenarios/actions
+            * Note which agreement was executed first
+            * Provide whole analysis, do not replace citations for analysis
+
+        3. BREACH ANALYSIS:
+        - For each identified conflict:
+            * What specific actions would trigger breach
+            * Which agreement would be breached first
+            * Domino effect on other obligations
+            * Available cure periods
+            * Cross-default implications
+            * Materiality assessment
+            * Provide whole analysis, do not replace citations for analysis
+        - Document:
+            * Relevant notice requirements
+            * Grace periods
+            * Cure rights
+            * Force majeure applicability
+        
+        IMPORTANT:
+        
+        - Give paragraphs in analysis rather that points, provide a rich quality thorough analysis
+        - Always place citations at the end of the analysis point
+        
+        Documents to analyze:
+        """
+        
+        try:
+            party_analysis = claude_call_cache(text, prompt)
+            analyses[party['name']] = party_analysis
+            # Analyze each party individually
+            print('*' * 100)
+            party_analysis = claude_call_cache(text, prompt)
+            print('*' * 100)
+            
+            # Add to analyses dictionary with party name as key
+        except Exception as e:
+            logger.error(f"Error analyzing conflicts for party {party['name']}: {str(e)}")
+            analyses[party['name']] = f"Error in analysis: {str(e)}"
+    
+    return analyses
 
 
 
