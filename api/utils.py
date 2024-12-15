@@ -562,6 +562,12 @@ def gemini_call(text, prompt):
                 )
             )
         logger.info("Gemini API call successful")
+        prompt_token_count = response.usage_metadata.prompt_token_count
+        output_token_count = response.usage_metadata.candidates_token_count
+        total_token_count = response.usage_metadata.total_token_count
+        print(f"prompt_token_count: {prompt_token_count}")
+        print(f"output_token_count: {output_token_count}")
+        print(f"total_token_count: {total_token_count}")
         return response.text
     except Exception as e:
         logger.error(f"Error calling Gemini API: {str(e)}")

@@ -23,7 +23,8 @@ from .utils import (
     claude_call_opus,
     check_common_parties,
     analyze_conflicts,
-    convert_pdf_to_docx
+    convert_pdf_to_docx,
+    gemini_call
 )
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -793,3 +794,107 @@ def preview_pdf_as_docx(request):
     finally:
         if os.path.exists(temp_pdf.name):
             os.remove(temp_pdf.name)
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def chat(request):
+    """
+    Handles chat interactions with context awareness and focused responses on referenced text
+    """
+    try:
+        # Extract data from request
+        message = request.data.get('message')
+        document_context = request.data.get('documentContext', '')
+        chat_history = request.data.get('chatHistory', [])
+        referenced_text = request.data.get('referencedText', '')
+        filename = request.data.get('filename', 'document')  # Default filename if not provided
+        
+        if not message:
+            return Response({
+                'error': 'No message provided'
+            }, status=400)
+
+        # Format chat history (last 10 messages)
+        formatted_history = "\n".join([
+            f"{msg['role']}: {msg['content']}" 
+            for msg in chat_history[-10:]
+        ])
+
+        # Create the base prompt structure
+        if referenced_text:
+            # Focus primarily on the referenced text
+            prompt = f"""
+            You are a legal AI assistant with expertise in contract analysis and legal document review. Your role is to provide clear, authoritative answers while maintaining accuracy through precise citations.
+
+            
+            Selected Text for Primary Focus, resolve the query in this text:
+            {referenced_text}
+            
+            Broader Document Context (for reference only):
+            {document_context}
+            
+            User's Message:
+            {message}
+            """
+        else:
+            # Regular full document analysis
+            prompt = f"""
+             You are a legal AI assistant with expertise in contract analysis and legal document review. Your role is to provide clear, authoritative answers while maintaining accuracy through precise citations.
+
+            
+            Document Context:
+            {document_context}
+            
+            Previous Conversation:
+            {formatted_history}
+            
+            User's Message:
+            {message}
+            """
+        prompt += """
+        CITATION FORMAT:
+        1. When referencing specific clauses or sections, always include the actual text content within [[double brackets]], not the clause numbers.
+        Example: "The agreement states [[The party shall be liable for all damages]]"
+
+        2. Add the filename after the citation using {{filename}}:
+        Example: "As specified in [[The party shall be liable]]{{Agreement.pdf}}"
+
+        3. For multiple related references, use them separately:
+        - Single reference: [[The Seller shall deliver...]]{{Agreement.pdf}}
+        - Multiple references: [[The Buyer agrees to pay...]]{{Agreement.pdf}} and [[All disputes shall be...]]{{Agreement.pdf}}
+
+        CITATION GUIDELINES:
+        1. Provide thorough analysis in complete sentences and paragraphs
+        2. Support your analysis with relevant citations at the end of each point
+        3. Citations should follow this format: [[exact text from document]]{{filename}}
+        4. Never use citations as replacements for analysis
+        5. Structure your response as:
+               - Clear explanation/analysis of the point
+               - Supporting citation at the end of the point
+               
+        - Always use the exact text as it appears in the document, do not change it or paraphrase it.
+        - Never include formatting characters (**, `, etc.) in citations
+        - Keep citations concise (30-40 characters)
+        - NEVER combine multiple references within a single bracket like [[amongst: Essilor India Private Limited...and The Persons of the Gupta Family]], use proper formatting and only one exact citation per double bracket.
+        - Do not use ellipsis (...), just use the first part of the text
+        - Always include the filename after each citation WITHOUT ANY SPACE/GAP
+
+
+        EXAMPLE RESPONSE:
+        The contract includes **important provisions** about liability [[The party shall be liable]]{{Agreement.pdf}} and termination [[Agreement may be terminated]]{{Agreement.pdf}}.
+        """
+
+        # Get response using Gemini
+        result = gemini_call("",prompt)
+        
+        return Response({
+            'success': True,
+            'response': result
+        })
+        
+    except Exception as e:
+        logger.exception("Error in chat endpoint")
+        return Response({
+            'error': str(e)
+        }, status=500)
