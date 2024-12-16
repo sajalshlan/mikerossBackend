@@ -32,6 +32,13 @@ from .prompts import (
     ASK_PROMPT,
 )
 from pdf2docx import Converter
+from pypdf import PdfReader
+from docx import Document
+from docx.shared import Pt, Inches, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
+import re
 
 logger = logging.getLogger(__name__)
 load_dotenv()
@@ -973,38 +980,179 @@ Provide your analysis in this structure:
     
     return analyses
 
-def convert_pdf_to_docx(pdf_file_path):
-    """
-    Converts PDF to DOCX and returns the content as base64
-    """
+def convert_pdf_to_docx(pdf_path):
     try:
-        with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as temp_docx:
-            # Convert PDF to DOCX
-            cv = Converter(pdf_file_path)
-            cv.convert(temp_docx.name)
-            cv.close()
+        # Read PDF
+        reader = PdfReader(pdf_path)
+        doc = Document()
+        
+        # Set default document styling
+        style = doc.styles['Normal']
+        style.font.name = 'Arial'
+        style.font.size = Pt(11)
+        
+        # Process each page
+        for page in reader.pages:
+            text = page.extract_text()
             
-            # Read the converted file
+            # Try to detect headers by looking for larger text or specific positioning
+            sections = split_into_sections(text)
+            
+            for section in sections:
+                if is_heading(section):
+                    # Add heading with appropriate styling
+                    heading = doc.add_heading(section.strip(), level=1)
+                    heading.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                    run = heading.runs[0]
+                    run.font.size = Pt(14)
+                    run.font.bold = True
+                elif is_subheading(section):
+                    # Add subheading
+                    heading = doc.add_heading(section.strip(), level=2)
+                    run = heading.runs[0]
+                    run.font.size = Pt(12)
+                    run.font.bold = True
+                else:
+                    # Regular paragraph with preserved formatting
+                    para = doc.add_paragraph()
+                    add_formatted_text(para, section)
+            
+            # Add page break between pages
+            if page != reader.pages[-1]:
+                doc.add_page_break()
+        
+        # Save to temporary file
+        with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as temp_docx:
+            doc.save(temp_docx.name)
+            
+            # Read and convert to base64
             with open(temp_docx.name, 'rb') as docx_file:
                 docx_content = docx_file.read()
+                base64_content = base64.b64encode(docx_content).decode('utf-8')
                 
-            # Convert to base64
-            base64_content = base64.b64encode(docx_content).decode('utf-8')
-            
             return {
                 'success': True,
                 'content': base64_content,
                 'mime_type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
             }
     except Exception as e:
+        logger.error(f"Enhanced conversion failed: {e}")
         return {
             'success': False,
             'error': str(e)
         }
-    finally:
-        # Cleanup
-        if os.path.exists(temp_docx.name):
-            os.remove(temp_docx.name)
+
+def split_into_sections(text):
+    """
+    Split text into logical sections based on formatting and content patterns
+    """
+    # Split on double newlines or other clear section breaks
+    sections = re.split(r'\n\s*\n', text)
+    return [s.strip() for s in sections if s.strip()]
+
+def is_heading(text):
+    """
+    Detect if text is likely a heading based on characteristics
+    """
+    # Common heading patterns
+    heading_patterns = [
+        r'^[A-Z\s]{10,}$',  # All caps text
+        r'^(?:ARTICLE|SECTION|APPENDIX)\s+[IVX0-9]+',  # Common legal document headers
+        r'^[0-9]+\.\s+[A-Z]',  # Numbered sections
+        r'^[A-Z][a-z]+\s+[0-9]+',  # Date patterns
+        r'^(?:OFFER LETTER|AGREEMENT|CONTRACT)',  # Common document titles
+        r'^(?:Business\s+Address|Annexure)',  # Specific headers from your example
+    ]
+    
+    return any(re.match(pattern, text.strip()) for pattern in heading_patterns)
+
+def is_subheading(text):
+    """
+    Detect if text is likely a subheading
+    """
+    # Common subheading patterns
+    subheading_patterns = [
+        r'^[0-9]+\.[0-9]+\s+',  # Numbered subsections
+        r'^[a-z]\)\s+',  # Letter-based lists
+        r'^(?:Terms|Conditions|Compensation)',  # Common subsection titles
+    ]
+    
+    return any(re.match(pattern, text.strip()) for pattern in subheading_patterns)
+
+def add_formatted_text(paragraph, text):
+    """
+    Add text to paragraph while preserving formatting
+    """
+    # Split text into segments based on formatting clues
+    segments = detect_formatting_segments(text)
+    
+    for segment in segments:
+        run = paragraph.add_run(segment['text'])
+        
+        # Apply detected formatting
+        if segment.get('bold'):
+            run.font.bold = True
+        if segment.get('italic'):
+            run.font.italic = True
+        if segment.get('size'):
+            run.font.size = Pt(segment['size'])
+        if segment.get('color'):
+            run.font.color.rgb = RGBColor(*segment['color'])
+
+def detect_formatting_segments(text):
+    """
+    Detect formatting in text and split into segments with formatting information
+    """
+    segments = []
+    
+    # Example formatting detection rules
+    # You can expand these based on your specific needs
+    
+    # Check for potential bold text (all caps sections)
+    bold_pattern = r'([A-Z]{2,}(?:\s+[A-Z]{2,})*)'
+    
+    # Split text based on formatting patterns
+    current_pos = 0
+    for match in re.finditer(bold_pattern, text):
+        # Add any text before the match as normal text
+        if match.start() > current_pos:
+            segments.append({
+                'text': text[current_pos:match.start()],
+                'size': 11
+            })
+        
+        # Add the matched text with bold formatting
+        segments.append({
+            'text': match.group(),
+            'bold': True,
+            'size': 11
+        })
+        
+        current_pos = match.end()
+    
+    # Add any remaining text
+    if current_pos < len(text):
+        segments.append({
+            'text': text[current_pos:],
+            'size': 11
+        })
+    
+    return segments
+
+def add_list_number(paragraph, text, level=1):
+    """
+    Add automatic numbering to paragraphs
+    """
+    p = paragraph._p  # Get the paragraph XML
+    numPr = OxmlElement('w:numPr')
+    numId = OxmlElement('w:numId')
+    numId.set(qn('w:val'), '1')  # Set the numbering style
+    ilvl = OxmlElement('w:ilvl')
+    ilvl.set(qn('w:val'), str(level-1))
+    numPr.append(ilvl)
+    numPr.append(numId)
+    p.get_or_add_pPr().append(numPr)
+    paragraph.add_run(text)
 
 
 
