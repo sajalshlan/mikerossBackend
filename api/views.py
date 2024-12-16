@@ -30,7 +30,6 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import UserSerializer, RegisterSerializer, AcceptTermsSerializer
-from .models import Document, User
 import tempfile
 
 logger = logging.getLogger(__name__)
@@ -158,32 +157,16 @@ def upload_file(request):
     if not file:
         return Response({'error': 'No file provided'}, status=400)
     
-    # Modified organization handling
-    if request.user.is_root:
-        organization = request.data.get('organization')  # Optional for root
-    else:
-        organization = request.user.organization  # Required for non-root
-        if not organization:
-            return Response({'error': 'No organization associated'}, status=400)
-    
-    document = Document.objects.create(
-        title=file.name,
-        file=file,
-        organization=organization,  # Can be None for root user
-        uploaded_by=request.user
-    )
-    
     file_extension = request.POST.get('file_extension', '')
     logger.info(f"Received file: {file.name} with extension {file_extension}")
     
-    # Create media directory if it doesn't exist
-    os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
-    file_path = os.path.join(settings.MEDIA_ROOT, str(int(time.time()))+ str(random.randint(1, 100)) + file.name)
+    # Create temporary file path without saving to media directory
+    file_path = os.path.join('/tmp', str(int(time.time())) + str(random.randint(1, 100)) + file.name)
 
     extracted_contents = None
     result = None
     try:
-        # Write file in chunks
+        # Write file in chunks to temporary location
         with open(file_path, 'wb') as destination:
             for chunk in file.chunks(chunk_size=8192):
                 process_file_chunk(chunk, destination)
