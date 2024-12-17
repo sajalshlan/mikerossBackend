@@ -977,34 +977,40 @@ def convert_pdf_to_docx(pdf_file_path):
     """
     Converts PDF to DOCX and returns the content as base64
     """
+    cv = None
+    temp_docx = None
     try:
-        with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as temp_docx:
-            # Convert PDF to DOCX
-            cv = Converter(pdf_file_path)
-            cv.convert(temp_docx.name)
-            cv.close()
+        temp_docx = tempfile.NamedTemporaryFile(suffix='.docx', delete=False)
+        # Convert PDF to DOCX
+        cv = Converter(pdf_file_path)
+        cv.convert(temp_docx.name)
+        
+        # Read the converted file
+        with open(temp_docx.name, 'rb') as docx_file:
+            docx_content = docx_file.read()
             
-            # Read the converted file
-            with open(temp_docx.name, 'rb') as docx_file:
-                docx_content = docx_file.read()
-                
-            # Convert to base64
-            base64_content = base64.b64encode(docx_content).decode('utf-8')
-            
-            return {
-                'success': True,
-                'content': base64_content,
-                'mime_type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-            }
+        # Convert to base64
+        base64_content = base64.b64encode(docx_content).decode('utf-8')
+        
+        return {
+            'success': True,
+            'content': base64_content,
+            'mime_type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        }
     except Exception as e:
         return {
             'success': False,
             'error': str(e)
         }
     finally:
-        # Cleanup
-        if os.path.exists(temp_docx.name):
-            os.remove(temp_docx.name)
+        # Cleanup converter
+        if cv:
+            cv.close()
+        # Cleanup temporary file
+        if temp_docx:
+            temp_docx.close()
+            if os.path.exists(temp_docx.name):
+                os.remove(temp_docx.name)
 
 
 

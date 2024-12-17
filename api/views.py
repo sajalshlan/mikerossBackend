@@ -760,12 +760,14 @@ def preview_pdf_as_docx(request):
     file = request.FILES.get('file')
     if not file:
         return Response({'error': 'No file provided'}, status=400)
-        
+    
+    temp_pdf = None    
     try:
         # Save uploaded file temporarily
-        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_pdf:
-            for chunk in file.chunks():
-                temp_pdf.write(chunk)
+        temp_pdf = tempfile.NamedTemporaryFile(suffix='.pdf', delete=False)
+        for chunk in file.chunks():
+            temp_pdf.write(chunk)
+        temp_pdf.close()
                 
         # Convert to DOCX
         result = convert_pdf_to_docx(temp_pdf.name)
@@ -775,8 +777,12 @@ def preview_pdf_as_docx(request):
         else:
             return Response({'error': result['error']}, status=500)
     finally:
-        if os.path.exists(temp_pdf.name):
-            os.remove(temp_pdf.name)
+        # Cleanup temporary PDF file
+        if temp_pdf:
+            if os.path.exists(temp_pdf.name):
+                os.remove(temp_pdf.name)
+        # Force garbage collection
+        gc.collect()
 
 @csrf_exempt
 @api_view(['POST'])
