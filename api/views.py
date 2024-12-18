@@ -197,12 +197,13 @@ def upload_file(request):
             process_time = time.time() - process_start_time
             total_time = time.time() - total_start_time
             
-            print('-' * 50)
             print("Timing Breakdown:")
             print(f"- Chunking: {chunk_time:.2f}s")
             print(f"- Processing: {process_time:.2f}s")
             print(f"- Total time: {total_time:.2f}s")
-            print('-' * 50)
+            logger.info('-' * 50)
+            logger.info(f"Timing Breakdown: - Chunking: {chunk_time:.2f}s - Processing: {process_time:.2f}s - Total time: {total_time:.2f}s")
+            logger.info('-' * 50)
             return Response(result)
             
     except Exception as e:
