@@ -17,6 +17,8 @@ import google.generativeai as genai
 from PIL import Image
 from typing import List, Tuple, Dict, Optional
 import pandas as pd
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 import anthropic 
 import time
 from .prompts import (
@@ -32,6 +34,8 @@ from .prompts import (
     ASK_PROMPT,
 )
 from pdf2docx import Converter
+from datetime import datetime
+import fitz  # PyMuPDF - much faster for page counting
 
 logger = logging.getLogger(__name__)
 load_dotenv()
@@ -60,8 +64,6 @@ class ResourceMonitor:
     def force_cleanup(self) -> None:
         with self.lock:
             gc.collect()
-            memory_mb = self.process.memory_info().rss / 1024 / 1024
-            logger.info(f"Memory after cleanup: {memory_mb:.2f} MB")
 
 resource_monitor = ResourceMonitor()
 
@@ -142,42 +144,100 @@ def ocr_process(file_path: str, rag_pipeline: RAGPipeline) -> str:
         logger.error(f"OCR error: {e}")
         return ""
 
+def process_page_chunk(pdf_data: bytes, page_num: int, rag_pipeline: RAGPipeline) -> str:
+    pages = None
+    try:
+        pages = convert_from_bytes(
+            pdf_data,
+            first_page=page_num,
+            last_page=page_num,
+            single_file=False
+        )
+        if pages:
+            return process_single_page(pages[0], rag_pipeline)
+        return ""
+    finally:
+        # Clean up pages
+        if pages:
+            for page in pages:
+                page.close()
+        del pages
+        resource_monitor.force_cleanup()
+
 def process_pdf_pages(pdf_path: str, rag_pipeline: RAGPipeline) -> List[str]:
     texts = []
+    total_start_time = time.time()
+    pdf_data = None
+    pdf_document = None
+    
     try:
+        # Time the PDF loading phase
+        load_start_time = time.time()
         with open(pdf_path, 'rb') as file:
             pdf_data = file.read()
-            all_pages = convert_from_bytes(pdf_data)
-            total_pages = len(all_pages)
-            del all_pages
+            # Just get page count - much faster!
+            pdf_document = fitz.open(stream=pdf_data, filetype="pdf")
+            total_pages = len(pdf_document)
             
-            for page_num in range(1, total_pages + 1):
+        load_duration = time.time() - load_start_time
+        print('-'*100)
+        print(f"PDF loading completed in {load_duration:.2f} seconds")
+        print('-'*100)
+            
+        # OCR processing with ThreadPool
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            future_to_page = {
+                executor.submit(process_page_chunk, pdf_data, page_num, rag_pipeline): page_num 
+                for page_num in range(1, total_pages + 1)
+            }
+            
+            for future in as_completed(future_to_page):
+                page_num = future_to_page[future]
                 try:
-                    pages = convert_from_bytes(
-                        pdf_data, 
-                        first_page=page_num, 
-                        last_page=page_num,
-                        single_file=False
-                    )
-                    if pages:
-                        text = process_single_page(pages[0], rag_pipeline)
-                        if text:
-                            texts.append(text)
+                    text = future.result()
+                    if text:
+                        texts.append((page_num, text))
+                except Exception as e:
+                    print(f"Error processing page {page_num}: {e}")
                 finally:
-                    del pages
-                    resource_monitor.force_cleanup()
+                    # Clean up the future object
+                    future_to_page.pop(future, None)
+        
+        texts = [text for _, text in sorted(texts)]
+                    
+        total_duration = time.time() - total_start_time
+        print('-'*100)
+        print(f"Total PDF OCR completed in {total_duration:.2f} seconds")
+        print(f"(PDF loading: {load_duration:.2f}s, OCR processing: {(total_duration - load_duration):.2f}s)")
+        print('-'*100)
+        
         return texts
     except Exception as e:
-        logger.error(f"Error processing PDF pages: {e}")
-        return texts
+        print(f"PDF OCR failed: {str(e)}")
+        raise
+    finally:
+        # Explicitly close and clean up resources
+        if pdf_document:
+            pdf_document.close()
+        del pdf_data
+        del pdf_document
+        resource_monitor.force_cleanup()
 
 def process_single_page(image: Image, rag_pipeline: RAGPipeline) -> str:
+    start_time = time.time()
     img_byte_arr = io.BytesIO()
     try:
         image.save(img_byte_arr, format='JPEG')
         img_bytes = img_byte_arr.getvalue()
         base64_image = base64.b64encode(img_bytes).decode('utf-8')
+        
+        # Log before API call
         result = rag_pipeline.analyze_single_image(base64_image)
+        
+        # Log API response time
+        api_duration = time.time() - start_time
+        logger.info(f"Google Vision API response received in {api_duration:.2f} seconds")
+        
         return result['responses'][0]['textAnnotations'][0]['description']
     finally:
         img_byte_arr.close()

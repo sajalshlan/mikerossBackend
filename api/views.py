@@ -166,19 +166,43 @@ def upload_file(request):
     extracted_contents = None
     result = None
     try:
-        # Write file in chunks to temporary location
-        with open(file_path, 'wb') as destination:
-            for chunk in file.chunks(chunk_size=8192):
-                process_file_chunk(chunk, destination)
+        total_start_time = time.time()
+        chunk_start_time = time.time()  # Add timing
+        
+        # For files under 10MB, write directly
+        if file.size < 5 * 1024 * 1024:  # 10MB in bytes
+            with open(file_path, 'wb') as destination:
+                destination.write(file.read())
+            chunk_time = time.time() - chunk_start_time
+            logger.info(f"Direct write took {chunk_time:.2f} seconds for {file.size/1024/1024:.2f}MB file")
+        else:
+            # Use chunks for larger files
+            with open(file_path, 'wb') as destination:
+                for chunk in file.chunks(chunk_size=1048576):
+                    process_file_chunk(chunk, destination)
+            chunk_time = time.time() - chunk_start_time
+            logger.info(f"Chunked write took {chunk_time:.2f} seconds for {file.size/1024/1024:.2f}MB file")
         
         # Process file based on type
         if file.name.lower().endswith('.zip'):
-            logger.info("Processing ZIP file")
+            print("Processing ZIP file")
             extracted_contents = extract_text_from_zip(file_path, rag_pipeline)
+            total_time = time.time() - total_start_time
+            print(f"Total processing time: {total_time:.2f} seconds (chunking: {chunk_time:.2f}s)")
             return Response({'success': True, 'files': extracted_contents})
         else:
-            logger.info("Processing single file")
+            print("\nProcessing single file")
+            process_start_time = time.time()
             result = process_single_file(file_path, file_extension)
+            process_time = time.time() - process_start_time
+            total_time = time.time() - total_start_time
+            
+            print('-' * 50)
+            print("Timing Breakdown:")
+            print(f"- Chunking: {chunk_time:.2f}s")
+            print(f"- Processing: {process_time:.2f}s")
+            print(f"- Total time: {total_time:.2f}s")
+            print('-' * 50)
             return Response(result)
             
     except Exception as e:
