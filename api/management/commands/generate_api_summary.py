@@ -7,6 +7,7 @@ import json
 from collections import defaultdict
 from decimal import Decimal
 import os
+from statistics import median
 
 class Command(BaseCommand):
     help = 'Generate API usage summary for a specific date'
@@ -89,6 +90,30 @@ class Command(BaseCommand):
             })
         })
 
+        # Modify the statistics tracking to include org and user level stats
+        endpoint_stats = defaultdict(lambda: {
+            'count': 0,
+            'total_time': 0,
+            'times': [],
+            'max_time': 0,
+            'min_time': float('inf'),
+            'avg_time': 0,
+            'organizations': defaultdict(lambda: {
+                'count': 0,
+                'total_time': 0,
+                'times': [],
+                'max_time': 0,
+                'min_time': float('inf'),
+                'users': defaultdict(lambda: {
+                    'count': 0,
+                    'total_time': 0,
+                    'times': [],
+                    'max_time': 0,
+                    'min_time': float('inf')
+                })
+            })
+        })
+
         for log in api_logs:
             # Extract just the endpoint name from the full URL
             endpoint = None
@@ -137,10 +162,70 @@ class Command(BaseCommand):
                 hour = (log.added_on + timedelta(hours=5, minutes=30)).strftime('%H')
                 summary['hourly_distribution'][hour] += 1
 
+                # Update endpoint statistics
+                execution_time = float(log.execution_time)
+                stats = endpoint_stats[endpoint]
+                stats['count'] += 1
+                stats['total_time'] += execution_time
+                stats['times'].append(execution_time)
+                stats['max_time'] = max(stats['max_time'], execution_time)
+                stats['min_time'] = min(stats['min_time'], execution_time)
+
+                # Update organization-level stats
+                org_stats = stats['organizations'][org_name]
+                org_stats['count'] += 1
+                org_stats['total_time'] += execution_time
+                org_stats['times'].append(execution_time)
+                org_stats['max_time'] = max(org_stats['max_time'], execution_time)
+                org_stats['min_time'] = min(org_stats['min_time'], execution_time)
+
+                # Update user-level stats
+                user_stats = org_stats['users'][username]
+                user_stats['count'] += 1
+                user_stats['total_time'] += execution_time
+                user_stats['times'].append(execution_time)
+                user_stats['max_time'] = max(user_stats['max_time'], execution_time)
+                user_stats['min_time'] = min(user_stats['min_time'], execution_time)
+
         # Calculate averages and find peak hour
         summary['average_execution_time'] = float(total_execution_time) / total_calls
         peak_hour = max(summary['hourly_distribution'].items(), key=lambda x: x[1])
         summary['peak_hour'] = f"{peak_hour[0]}:00 IST ({peak_hour[1]} calls)"
+
+        # Calculate final statistics including org and user breakdowns
+        summary['endpoint_distribution'] = {
+            endpoint: {
+                'count': stats['count'],
+                'avg_time': f"{stats['total_time'] / stats['count']:.4f}s",
+                'max_time': f"{stats['max_time']:.4f}s",
+                'min_time': f"{stats['min_time']:.4f}s",
+                'median_time': f"{median(stats['times']):.4f}s",
+                'percentage': f"{(stats['count'] / total_calls * 100):.1f}%",
+                'organizations': {
+                    org_name: {
+                        'count': org_stats['count'],
+                        'avg_time': f"{org_stats['total_time'] / org_stats['count']:.4f}s",
+                        'max_time': f"{org_stats['max_time']:.4f}s",
+                        'min_time': f"{org_stats['min_time']:.4f}s",
+                        'median_time': f"{median(org_stats['times']):.4f}s",
+                        'percentage': f"{(org_stats['count'] / stats['count'] * 100):.1f}%",
+                        'users': {
+                            username: {
+                                'count': user_stats['count'],
+                                'avg_time': f"{user_stats['total_time'] / user_stats['count']:.4f}s",
+                                'max_time': f"{user_stats['max_time']:.4f}s",
+                                'min_time': f"{user_stats['min_time']:.4f}s",
+                                'median_time': f"{median(user_stats['times']):.4f}s",
+                                'percentage': f"{(user_stats['count'] / org_stats['count'] * 100):.1f}%"
+                            }
+                            for username, user_stats in org_stats['users'].items()
+                        }
+                    }
+                    for org_name, org_stats in stats['organizations'].items()
+                }
+            }
+            for endpoint, stats in endpoint_stats.items()
+        }
 
         # Format organization data
         summary['organizations'] = {

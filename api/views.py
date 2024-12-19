@@ -955,14 +955,14 @@ def get_api_summary(request):
         formatted_response = {
             'date': summary['date'],
             'overview': {
-                'total_api_calls': 0,  # This will be updated based on filters
+                'total_api_calls': 0,
                 'average_execution_time': 0,
                 'peak_hour': summary['peak_hour']
             },
             'organizations': {},
             'status_codes': defaultdict(int),
             'hourly_activity': summary['hourly_distribution'],
-            'endpoint_distribution': defaultdict(int)
+            'endpoint_distribution': {}  # Will be populated with filtered data
         }
 
         total_execution_time = 0
@@ -994,11 +994,6 @@ def get_api_summary(request):
                     'avg_execution_time': f"{user_data['avg_execution_time']:.4f}s"
                 }
 
-                # Update endpoint distribution for filtered data
-                if org_filter or user_filter:
-                    for endpoint, count in user_data['endpoints'].items():
-                        formatted_response['endpoint_distribution'][endpoint] += count
-
                 # Update totals
                 org_total_calls += user_data['total_calls']
                 total_calls += user_data['total_calls']
@@ -1009,6 +1004,57 @@ def get_api_summary(request):
                 org_summary['total_calls'] = org_total_calls
                 formatted_response['organizations'][org_name] = org_summary
 
+        # Process endpoint distribution with filters
+        for endpoint, endpoint_data in summary['endpoint_distribution'].items():
+            filtered_endpoint_data = {
+                'count': endpoint_data['count'],
+                'avg_time': endpoint_data['avg_time'],
+                'max_time': endpoint_data['max_time'],
+                'min_time': endpoint_data['min_time'],
+                'median_time': endpoint_data['median_time'],
+                'percentage': endpoint_data['percentage'],
+                'organizations': {}
+            }
+
+            # Filter organizations for this endpoint
+            for org_name, org_stats in endpoint_data['organizations'].items():
+                # Apply organization filter
+                if org_filter and org_filter.lower() != org_name.lower():
+                    continue
+
+                filtered_org_data = {
+                    'count': org_stats['count'],
+                    'avg_time': org_stats['avg_time'],
+                    'max_time': org_stats['max_time'],
+                    'min_time': org_stats['min_time'],
+                    'median_time': org_stats['median_time'],
+                    'percentage': org_stats['percentage'],
+                    'users': {}
+                }
+
+                # Filter users for this organization
+                for username, user_stats in org_stats['users'].items():
+                    # Apply user filter
+                    if user_filter and user_filter.lower() != username.lower():
+                        continue
+
+                    filtered_org_data['users'][username] = {
+                        'count': user_stats['count'],
+                        'avg_time': user_stats['avg_time'],
+                        'max_time': user_stats['max_time'],
+                        'min_time': user_stats['min_time'],
+                        'median_time': user_stats['median_time'],
+                        'percentage': user_stats['percentage']
+                    }
+
+                # Only add organization if it has matching users
+                if filtered_org_data['users']:
+                    filtered_endpoint_data['organizations'][org_name] = filtered_org_data
+
+            # Only add endpoint if it has matching organizations
+            if filtered_endpoint_data['organizations'] or not (org_filter or user_filter):
+                formatted_response['endpoint_distribution'][endpoint] = filtered_endpoint_data
+
         # Update overview with filtered totals
         if total_calls > 0:
             formatted_response['overview'].update({
@@ -1016,36 +1062,15 @@ def get_api_summary(request):
                 'average_execution_time': f"{(total_execution_time/total_calls):.4f}s"
             })
         else:
-            # If no data matches filters
             formatted_response['overview'].update({
                 'total_api_calls': 0,
                 'average_execution_time': '0.0000s'
             })
 
-        # If no data matches filters
-        if not formatted_response['organizations']:
-            if org_filter and user_filter:
-                message = f"No data found for organization '{org_filter}' and user '{user_filter}'"
-            elif org_filter:
-                message = f"No data found for organization '{org_filter}'"
-            elif user_filter:
-                message = f"No data found for user '{user_filter}'"
-            else:
-                message = "No data found"
-                
-            return Response({
-                'date': summary['date'],
-                'message': message,
-                'overview': {
-                    'total_api_calls': 0,
-                    'average_execution_time': '0.0000s'
-                },
-                'endpoint_distribution': {} if (org_filter or user_filter) else summary['endpoint_distribution']
-            })
-
         return Response(formatted_response)
 
     except Exception as e:
+        logger.exception("Error in get_api_summary")
         return Response({
             'error': str(e)
         }, status=500)
