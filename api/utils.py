@@ -1033,10 +1033,44 @@ Provide your analysis in this structure:
     
     return analyses
 
+def is_scanned_pdf(pdf_path: str) -> bool:
+    """
+    Checks if a PDF is scanned by attempting to extract text from the first page.
+    Returns True if it's likely a scanned document (little to no extractable text).
+    """
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            first_page = pdf.pages[0]
+            text = first_page.extract_text() or ""
+            # If there's very little text on the first page, it's likely scanned
+            return len(text.strip()) < 100
+    except Exception as e:
+        logger.error(f"Error checking if PDF is scanned: {e}")
+        return True  # Assume scanned if there's an error
+
 def convert_pdf_to_docx(pdf_file_path):
     """
     Converts PDF to DOCX and returns the content as base64
     """
+    # First check if it's a scanned PDF
+    if is_scanned_pdf(pdf_file_path):
+        try:
+            # Return the original PDF content as base64
+            with open(pdf_file_path, 'rb') as pdf_file:
+                base64_content = base64.b64encode(pdf_file.read()).decode('utf-8')
+                return {
+                    'success': True,
+                    'content': base64_content,
+                    'mime_type': 'application/pdf',
+                    'is_scanned': True
+                }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+    # Continue with normal conversion for text-based PDFs
     cv = None
     temp_docx = None
     try:
