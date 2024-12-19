@@ -21,4 +21,5 @@ urlpatterns = [
     path('brainstorm_chat/', views.brainstorm_chat, name='brainstorm_chat'),
     path('preview_pdf_as_docx/', views.preview_pdf_as_docx, name='preview_pdf_as_docx'),
     path('chat/', views.chat, name='chat'),
+    path('api_summary/', views.get_api_summary, name='api_summary'),
 ]
