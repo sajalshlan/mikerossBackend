@@ -17,30 +17,52 @@ admin.site.unregister(APILogsModel)
 
 # Create our custom admin by extending the original APILogsAdmin
 class CustomAPILogsAdmin(APILogsAdmin):
-    list_display = ('api', 'method', 'status_code', 'execution_time', 'get_local_time', 'user', 'organization')
+    list_display = ('api', 'method', 'status_code', 'execution_time', 'get_date', 'get_time', 'user', 'organization')
     list_filter = ('method', 'status_code', 'added_on')
     search_fields = ('api', 'headers')
 
-    def get_local_time(self, obj):
+    def get_date(self, obj):
         try:
-            # Convert to Indian time
             ist_time = obj.added_on + timedelta(hours=5, minutes=30)
-            # Format: HH:MM:SS AM/PM DD/MM/YY
-            formatted_time = ist_time.strftime("%I:%M:%S %p, %d/%m/%y")
-            return f"{formatted_time} IST"
+            return ist_time.strftime("%d/%m/%y")
         except Exception as e:
             return str(obj.added_on)
-    get_local_time.short_description = 'Added On (IST)'
-    get_local_time.admin_order_field = 'added_on'
+    get_date.short_description = 'Date'
+    get_date.admin_order_field = 'added_on'
+
+    def get_time(self, obj):
+        try:
+            ist_time = obj.added_on + timedelta(hours=5, minutes=30)
+            return f"{ist_time.strftime('%H:%M:%S')}"
+        except Exception as e:
+            return str(obj.added_on)
+    get_time.short_description = 'Time (IST)'
+    get_time.admin_order_field = 'added_on'
 
     def user(self, obj):
         try:
-            # Try to get user from META headers first
             if isinstance(obj.headers, str):
                 headers = json.loads(obj.headers)
             else:
                 headers = obj.headers
-            return headers.get('USER', headers.get('user', 'Anonymous'))
+
+            # Get user info from headers
+            username = headers.get('USER', headers.get('user'))
+            
+            # Return username if it exists and isn't None or empty
+            if username and username.strip():
+                return username
+                
+            # Check for root user or other special cases
+            user_id = headers.get('X_USER_ID', headers.get('x-user-id'))
+            if user_id:
+                try:
+                    user = User.objects.get(id=user_id)
+                    return user.username
+                except User.DoesNotExist:
+                    pass
+                    
+            return 'Anonymous'
         except (json.JSONDecodeError, AttributeError):
             return 'Anonymous'
     user.short_description = 'User'
@@ -51,18 +73,24 @@ class CustomAPILogsAdmin(APILogsAdmin):
                 headers = json.loads(obj.headers)
             else:
                 headers = obj.headers
-            org_id = headers.get('X_ORGANIZATION_ID', headers.get('x-organization-id', 'N/A'))
             
-            # If we have a valid org_id, get the organization name
-            if org_id and org_id != 'N/A':
-                try:
-                    org = Organization.objects.get(id=org_id)
-                    return org.name
-                except Organization.DoesNotExist:
-                    return f'Org {org_id} (deleted)'
-            return 'N/A'
+            # Get organization ID from headers
+            org_id = headers.get('X_ORGANIZATION_ID', headers.get('x-organization-id'))
+            
+            # Check if org_id is None, 'N/A', empty string, or invalid
+            if not org_id or org_id == 'N/A' or org_id == '':
+                return 'No Organization'
+            
+            try:
+                # Convert to int to ensure it's a valid ID
+                org_id = int(org_id)
+                org = Organization.objects.get(id=org_id)
+                return org.name
+            except (ValueError, Organization.DoesNotExist):
+                return 'Invalid Organization'
+                
         except (json.JSONDecodeError, AttributeError):
-            return 'N/A'
+            return 'No Organization'
     organization.short_description = 'Organization'
 
 # Register our custom admin
