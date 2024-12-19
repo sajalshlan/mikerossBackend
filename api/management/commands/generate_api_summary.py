@@ -32,6 +32,16 @@ class Command(BaseCommand):
         raise TypeError
 
     def handle(self, *args, **options):
+        # Add this at the beginning of the handle method
+        COUNTED_ENDPOINTS = [
+            'upload_file/',
+            'perform_analysis/',
+            'perform_conflict_check/',
+            'chat/',
+            'brainstorm_chat/',
+            'explain_text/'
+        ]
+
         # Get the date to analyze
         if options['date']:
             try:
@@ -50,7 +60,8 @@ class Command(BaseCommand):
             'status_code_distribution': defaultdict(int),
             'average_execution_time': 0,
             'peak_hour': None,
-            'hourly_distribution': defaultdict(int)
+            'hourly_distribution': defaultdict(int),
+            'endpoint_distribution': defaultdict(int)
         }
 
         # Get all API calls for the day
@@ -59,7 +70,7 @@ class Command(BaseCommand):
         )
 
         # Calculate total API calls
-        total_calls = api_logs.count()
+        total_calls = sum(1 for log in api_logs if any(endpoint in log.api for endpoint in COUNTED_ENDPOINTS))
         summary['total_api_calls'] = total_calls
 
         if total_calls == 0:
@@ -79,39 +90,52 @@ class Command(BaseCommand):
         })
 
         for log in api_logs:
-            # Get headers
-            try:
-                headers = json.loads(log.headers) if isinstance(log.headers, str) else log.headers
-            except json.JSONDecodeError:
-                headers = {}
+            # Extract just the endpoint name from the full URL
+            endpoint = None
+            for counted_endpoint in COUNTED_ENDPOINTS:
+                if counted_endpoint in log.api:
+                    endpoint = counted_endpoint
+                    break
+                    
+            if endpoint:
+                summary['endpoint_distribution'][endpoint] += 1
+                # Only process if it's a counted endpoint
+                if not any(endpoint in log.api for endpoint in COUNTED_ENDPOINTS):
+                    continue
 
-            # Get organization and user info
-            org_id = headers.get('X_ORGANIZATION_ID', headers.get('x-organization-id', 'N/A'))
-            username = headers.get('USER', headers.get('user', 'Anonymous'))
-
-            # Update organization and user statistics
-            org_name = 'No Organization'
-            if org_id and org_id != 'N/A':
+                # Get headers
                 try:
-                    org = Organization.objects.get(id=org_id)
-                    org_name = org.name
-                except Organization.DoesNotExist:
-                    org_name = f'Unknown Org ({org_id})'
+                    headers = json.loads(log.headers) if isinstance(log.headers, str) else log.headers
+                except json.JSONDecodeError:
+                    headers = {}
 
-            # Update statistics
-            org_data[org_name]['total_calls'] += 1
-            org_data[org_name]['users'][username]['total_calls'] += 1
-            org_data[org_name]['users'][username]['status_codes'][str(log.status_code)] += 1
-            org_data[org_name]['users'][username]['endpoints'][log.api] += 1
-            org_data[org_name]['users'][username]['total_execution_time'] += log.execution_time
+                # Get organization and user info
+                org_id = headers.get('X_ORGANIZATION_ID', headers.get('x-organization-id', 'N/A'))
+                username = headers.get('USER', headers.get('user', 'Anonymous'))
 
-            # Update global statistics
-            summary['status_code_distribution'][str(log.status_code)] += 1
-            total_execution_time += log.execution_time
+                # Update organization and user statistics
+                org_name = 'No Organization'
+                if org_id and org_id != 'N/A':
+                    try:
+                        org = Organization.objects.get(id=org_id)
+                        org_name = org.name
+                    except Organization.DoesNotExist:
+                        org_name = f'Unknown Org ({org_id})'
 
-            # Update hourly distribution
-            hour = (log.added_on + timedelta(hours=5, minutes=30)).strftime('%H')
-            summary['hourly_distribution'][hour] += 1
+                # Update statistics
+                org_data[org_name]['total_calls'] += 1
+                org_data[org_name]['users'][username]['total_calls'] += 1
+                org_data[org_name]['users'][username]['status_codes'][str(log.status_code)] += 1
+                org_data[org_name]['users'][username]['endpoints'][log.api] += 1
+                org_data[org_name]['users'][username]['total_execution_time'] += log.execution_time
+
+                # Update global statistics
+                summary['status_code_distribution'][str(log.status_code)] += 1
+                total_execution_time += log.execution_time
+
+                # Update hourly distribution
+                hour = (log.added_on + timedelta(hours=5, minutes=30)).strftime('%H')
+                summary['hourly_distribution'][hour] += 1
 
         # Calculate averages and find peak hour
         summary['average_execution_time'] = float(total_execution_time) / total_calls
@@ -138,6 +162,7 @@ class Command(BaseCommand):
         # Convert defaultdict to regular dict for JSON serialization
         summary['status_code_distribution'] = dict(summary['status_code_distribution'])
         summary['hourly_distribution'] = dict(summary['hourly_distribution'])
+        summary['endpoint_distribution'] = dict(summary['endpoint_distribution'])
 
         # Save to file with custom JSON encoder
         output_path = options['output']

@@ -955,13 +955,14 @@ def get_api_summary(request):
         formatted_response = {
             'date': summary['date'],
             'overview': {
-                'total_api_calls': 0,  # Will be updated based on filters
+                'total_api_calls': 0,  # This will be updated based on filters
                 'average_execution_time': 0,
                 'peak_hour': summary['peak_hour']
             },
             'organizations': {},
             'status_codes': defaultdict(int),
-            'hourly_activity': summary['hourly_distribution']
+            'hourly_activity': summary['hourly_distribution'],
+            'endpoint_distribution': defaultdict(int)
         }
 
         total_execution_time = 0
@@ -974,7 +975,7 @@ def get_api_summary(request):
                 continue
 
             org_summary = {
-                'total_calls': 0,  # Will be updated based on user filter
+                'total_calls': 0,
                 'users': {}
             }
             
@@ -989,22 +990,19 @@ def get_api_summary(request):
                 org_summary['users'][username] = {
                     'total_calls': user_data['total_calls'],
                     'status_codes': user_data['status_codes'],
-                    'top_endpoints': dict(sorted(
-                        user_data['endpoints'].items(), 
-                        key=lambda x: x[1], 
-                        reverse=True
-                    )[:5]),
+                    'endpoints': user_data['endpoints'],
                     'avg_execution_time': f"{user_data['avg_execution_time']:.4f}s"
                 }
+
+                # Update endpoint distribution for filtered data
+                if org_filter or user_filter:
+                    for endpoint, count in user_data['endpoints'].items():
+                        formatted_response['endpoint_distribution'][endpoint] += count
 
                 # Update totals
                 org_total_calls += user_data['total_calls']
                 total_calls += user_data['total_calls']
                 total_execution_time += (user_data['avg_execution_time'] * user_data['total_calls'])
-
-                # Update status code counts
-                for status_code, count in user_data['status_codes'].items():
-                    formatted_response['status_codes'][f"Status {status_code}"] += count
 
             # Only add organization if it has matching users
             if org_summary['users']:
@@ -1017,7 +1015,13 @@ def get_api_summary(request):
                 'total_api_calls': total_calls,
                 'average_execution_time': f"{(total_execution_time/total_calls):.4f}s"
             })
-        
+        else:
+            # If no data matches filters
+            formatted_response['overview'].update({
+                'total_api_calls': 0,
+                'average_execution_time': '0.0000s'
+            })
+
         # If no data matches filters
         if not formatted_response['organizations']:
             if org_filter and user_filter:
@@ -1035,7 +1039,8 @@ def get_api_summary(request):
                 'overview': {
                     'total_api_calls': 0,
                     'average_execution_time': '0.0000s'
-                }
+                },
+                'endpoint_distribution': {} if (org_filter or user_filter) else summary['endpoint_distribution']
             })
 
         return Response(formatted_response)
