@@ -9,15 +9,29 @@ import json
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django import forms
+import pytz
+from django.conf import settings
 
 # First unregister the existing admin
 admin.site.unregister(APILogsModel)
 
 # Create our custom admin by extending the original APILogsAdmin
 class CustomAPILogsAdmin(APILogsAdmin):
-    list_display = ('api', 'method', 'status_code', 'execution_time', 'added_on', 'user', 'organization')
+    list_display = ('api', 'method', 'status_code', 'execution_time', 'get_local_time', 'user', 'organization')
     list_filter = ('method', 'status_code', 'added_on')
     search_fields = ('api', 'headers')
+
+    def get_local_time(self, obj):
+        try:
+            # Convert to Indian time
+            ist_time = obj.added_on + timedelta(hours=5, minutes=30)
+            # Format: HH:MM:SS AM/PM DD/MM/YY
+            formatted_time = ist_time.strftime("%I:%M:%S %p, %d/%m/%y")
+            return f"{formatted_time} IST"
+        except Exception as e:
+            return str(obj.added_on)
+    get_local_time.short_description = 'Added On (IST)'
+    get_local_time.admin_order_field = 'added_on'
 
     def user(self, obj):
         try:
