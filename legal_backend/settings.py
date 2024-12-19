@@ -72,6 +72,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'api',
+    'drf_api_logger'
 ]
 
 MIDDLEWARE = [
@@ -83,6 +84,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'api.middleware.APILoggerMiddlewareCustom',
+    'drf_api_logger.middleware.api_logger_middleware.APILoggerMiddleware',
 ]
 
 ROOT_URLCONF = 'legal_backend.urls'
@@ -227,3 +230,9 @@ AUTH_USER_MODEL = 'api.User'
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
+
+# Basic configuration
+DRF_API_LOGGER_DATABASE = True  # Log to database
+DRF_API_LOGGER_SIGNAL = False  # Log using signals (alternative to database)
+DRF_API_LOGGER_EXCLUDE_PATHS = ['/admin/', '/static/']  # Paths to exclude from logging
+DRF_API_LOGGER_PATH_TYPE = 'ABSOLUTE'  # ABSOLUTE or RELATIVE path
