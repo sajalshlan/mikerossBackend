@@ -32,14 +32,30 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import UserSerializer, RegisterSerializer, AcceptTermsSerializer
 import tempfile
 from django.core.management import call_command
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import defaultdict
+from django.contrib.auth.models import User
+from django.contrib.contenttypes.models import ContentType
+from django.db import models
+from django.utils import timezone
+from drf_api_logger.models import APILogsModel
+from .models import Organization
 
 logger = logging.getLogger(__name__)
 
 # Initialize RAGPipeline and ResourceMonitor
 rag_pipeline = RAGPipeline()
 resource_monitor = ResourceMonitor()
+
+# Add this constant near the top of the file
+COUNTED_ENDPOINTS = [
+    'upload_file/',
+    'perform_analysis/',
+    'perform_conflict_check/',
+    'chat/',
+    'brainstorm_chat/',
+    'explain_text/'
+]
 
 @csrf_exempt
 @api_view(['GET'])
@@ -925,14 +941,22 @@ def get_api_summary(request):
         org_filter = request.query_params.get('organization')
         user_filter = request.query_params.get('user')
         
+        # Parse the date
         if date_str:
             try:
-                datetime.strptime(date_str, '%d-%m-%Y')
+                target_date = datetime.strptime(date_str, '%d-%m-%Y').date()
             except ValueError:
                 return Response({
                     'error': 'Invalid date format. Please use DD-MM-YYYY'
                 }, status=400)
-        
+        else:
+            target_date = timezone.now().date()
+
+        # Get API logs for the specified date
+        api_logs = APILogsModel.objects.filter(
+            added_on__date=target_date
+        )
+
         # Create a unique filename for this request
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         output_file = f'api_summary_{timestamp}.json'
@@ -1066,6 +1090,50 @@ def get_api_summary(request):
                 'total_api_calls': 0,
                 'average_execution_time': '0.0000s'
             })
+
+        # Add this section to format the logs
+        formatted_logs = []
+        for log in api_logs:
+            # Extract just the endpoint name from the full URL
+            endpoint = None
+            for counted_endpoint in COUNTED_ENDPOINTS:
+                if counted_endpoint in log.api:
+                    endpoint = counted_endpoint
+                    break
+                    
+            if endpoint:
+                try:
+                    headers = json.loads(log.headers) if isinstance(log.headers, str) else log.headers
+                except json.JSONDecodeError:
+                    headers = {}
+
+                org_id = headers.get('X_ORGANIZATION_ID', headers.get('x-organization-id', 'N/A'))
+                username = headers.get('USER', headers.get('user', 'Anonymous'))
+
+                org_name = 'No Organization'
+                if org_id and org_id != 'N/A':
+                    try:
+                        org = Organization.objects.get(id=org_id)
+                        org_name = org.name
+                    except Organization.DoesNotExist:
+                        org_name = f'Unknown Org ({org_id})'
+
+                # Only include logs that match the filters
+                if (not org_filter or org_name.lower() == org_filter.lower()) and \
+                   (not user_filter or username.lower() == user_filter.lower()):
+                    formatted_logs.append({
+                        'id': log.id,
+                        'endpoint': log.api,
+                        'method': log.method,
+                        'status_code': log.status_code,
+                        'execution_time': f"{log.execution_time:.5f}s",
+                        'timestamp': (log.added_on + timedelta(hours=5, minutes=30)).strftime('%d/%m/%y %H:%M:%S'),
+                        'organization': org_name,
+                        'user': username
+                    })
+
+        # Add logs to the response
+        formatted_response['logs'] = formatted_logs
 
         return Response(formatted_response)
 

@@ -114,6 +114,19 @@ class Command(BaseCommand):
             })
         })
 
+        # Add this near the beginning of the handle method
+        def format_log_entry(log, org_name, username):
+            return {
+                'id': log.id,
+                'endpoint': log.api,
+                'method': log.method,
+                'status_code': log.status_code,
+                'execution_time': f"{log.execution_time:.5f}s",
+                'timestamp': (log.added_on + timedelta(hours=5, minutes=30)).strftime('%d/%m/%y %H:%M:%S'),
+                'organization': org_name,
+                'user': username
+            }
+
         for log in api_logs:
             # Extract just the endpoint name from the full URL
             endpoint = None
@@ -248,6 +261,31 @@ class Command(BaseCommand):
         summary['status_code_distribution'] = dict(summary['status_code_distribution'])
         summary['hourly_distribution'] = dict(summary['hourly_distribution'])
         summary['endpoint_distribution'] = dict(summary['endpoint_distribution'])
+
+        # Store all API logs
+        formatted_logs = []
+        for log in api_logs:
+            if any(endpoint in log.api for endpoint in COUNTED_ENDPOINTS):
+                try:
+                    headers = json.loads(log.headers) if isinstance(log.headers, str) else log.headers
+                except json.JSONDecodeError:
+                    headers = {}
+                
+                org_id = headers.get('X_ORGANIZATION_ID', headers.get('x-organization-id', 'N/A'))
+                username = headers.get('USER', headers.get('user', 'Anonymous'))
+                
+                org_name = 'No Organization'
+                if org_id and org_id != 'N/A':
+                    try:
+                        org = Organization.objects.get(id=org_id)
+                        org_name = org.name
+                    except Organization.DoesNotExist:
+                        org_name = f'Unknown Org ({org_id})'
+                
+                formatted_logs.append(format_log_entry(log, org_name, username))
+
+        # Add logs to summary
+        summary['logs'] = formatted_logs
 
         # Save to file with custom JSON encoder
         output_path = options['output']
