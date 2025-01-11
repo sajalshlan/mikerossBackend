@@ -189,32 +189,36 @@ import os
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {message}',
-            'style': '{',
+    "formatters": {
+    "app": {
+        "format": (
+            u"%(asctime)s [%(levelname)-8s] "
+            "(%(module)s.%(funcName)s) %(message)s"
+        ),
+        "datefmt": "%Y-%m-%d %H:%M:%S",
         },
     },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
+            'formatter': 'app',
         },
         'file': {
             'class': 'logging.FileHandler',
             'filename': 'debug.log',
-            'formatter': 'verbose',
+            'formatter': 'app',
         },
     },
     'loggers': {
         'django': {
             'handlers': ['console', 'file'],
             'level': 'INFO',
+            'propagate': False,
         },
         'api': {
             'handlers': ['console', 'file'],
-            'level': 'DEBUG',
-            'propagate': True,
+            'level': 'INFO',
+            'propagate': False,
         },
     },
 }

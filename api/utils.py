@@ -58,7 +58,7 @@ class ResourceMonitor:
         if current_time - self._last_logged >= self.log_interval:
             with self.lock:
                 memory_mb = self.process.memory_info().rss / 1024 / 1024
-                logger.info(f"Memory usage at {location}: {memory_mb:.2f} MB")
+                # logger.info(f"Memory usage at {location}: {memory_mb:.2f} MB")
                 self._last_logged = current_time
 
     def force_cleanup(self) -> None:
@@ -76,6 +76,7 @@ class RAGPipeline:
         self.chunk_size = 8192  # 8KB chunks
 
     def analyze_images(self, images: List[Tuple[str, Tuple[str, bytes, str]]]) -> str:
+        logger.info(f"Image analysis started - Count: {len(images)}")
         texts = []
         try:
             for _, image_tuple in images:
@@ -91,6 +92,7 @@ class RAGPipeline:
             
             return "\n\n".join(texts)
         except Exception as e:
+            logger.error(f"Image analysis failed - Error: {str(e)}", exc_info=True)
             return ""
 
     def _process_single_image(self, img_bytes: bytes) -> Optional[str]:
@@ -119,7 +121,7 @@ class RAGPipeline:
             response.raise_for_status()
             return response.json()
         except Exception as e:
-            logger.error(f"Vision API error: {e}")
+            logger.error(f"Vision API failed - Error: {str(e)}", exc_info=True)
             raise
         finally:
             del payload
@@ -165,26 +167,21 @@ def process_page_chunk(pdf_data: bytes, page_num: int, rag_pipeline: RAGPipeline
         resource_monitor.force_cleanup()
 
 def process_pdf_pages(pdf_path: str, rag_pipeline: RAGPipeline) -> List[str]:
+    logger.info("PDF processing started")
     texts = []
     total_start_time = time.time()
-    pdf_data = None
-    pdf_document = None
     
     try:
-        # Time the PDF loading phase
-        load_start_time = time.time()
+        # Load PDF and get page count
         with open(pdf_path, 'rb') as file:
             pdf_data = file.read()
-            # Just get page count - much faster!
             pdf_document = fitz.open(stream=pdf_data, filetype="pdf")
             total_pages = len(pdf_document)
+        
+        load_duration = time.time() - total_start_time
+        logger.info(f"PDF loaded - Pages: {total_pages}, Time: {load_duration:.2f}s")
             
-        load_duration = time.time() - load_start_time
-        print('-'*100)
-        print(f"PDF loading completed in {load_duration:.2f} seconds")
-        print('-'*100)
-            
-        # OCR processing with ThreadPool
+        # Process pages with ThreadPool
         with ThreadPoolExecutor(max_workers=10) as executor:
             future_to_page = {
                 executor.submit(process_page_chunk, pdf_data, page_num, rag_pipeline): page_num 
@@ -198,29 +195,21 @@ def process_pdf_pages(pdf_path: str, rag_pipeline: RAGPipeline) -> List[str]:
                     if text:
                         texts.append((page_num, text))
                 except Exception as e:
-                    print(f"Error processing page {page_num}: {e}")
+                    logger.error(f"Page processing failed - Page: {page_num}, Error: {str(e)}")
                 finally:
-                    # Clean up the future object
                     future_to_page.pop(future, None)
         
         texts = [text for _, text in sorted(texts)]
-                    
         total_duration = time.time() - total_start_time
-        print('-'*100)
-        print(f"Total PDF OCR completed in {total_duration:.2f} seconds")
-        print(f"(PDF loading: {load_duration:.2f}s, OCR processing: {(total_duration - load_duration):.2f}s)")
-        print('-'*100)
+        logger.info(f"PDF processing completed - Pages: {total_pages}, Time: {total_duration:.2f}s")
         
         return texts
     except Exception as e:
-        print(f"PDF OCR failed: {str(e)}")
+        logger.error(f"PDF processing failed - Error: {str(e)}", exc_info=True)
         raise
     finally:
-        # Explicitly close and clean up resources
-        if pdf_document:
+        if 'pdf_document' in locals():
             pdf_document.close()
-        del pdf_data
-        del pdf_document
         resource_monitor.force_cleanup()
 
 def process_single_page(image: Image, rag_pipeline: RAGPipeline) -> str:
@@ -245,10 +234,10 @@ def process_single_page(image: Image, rag_pipeline: RAGPipeline) -> str:
         del base64_image
 
 def extract_text_from_file(file_path: str, rag_pipeline: RAGPipeline, file_extension: Optional[str] = None) -> str:
-    resource_monitor.log_memory("Starting text extraction")
-    
     if not file_extension:
         _, file_extension = os.path.splitext(file_path)
+    
+    logger.info(f"Text extraction started - Type: {file_extension}")
     
     try:
         if file_extension.lower() in ['.xls', '.xlsx', '.csv']:
@@ -268,6 +257,9 @@ def extract_text_from_file(file_path: str, rag_pipeline: RAGPipeline, file_exten
             return ocr_process(file_path, rag_pipeline)
         
         raise ValueError(f"Unsupported file format: {file_extension}")
+    except Exception as e:
+        logger.error(f"Text extraction failed - Type: {file_extension}, Error: {str(e)}", exc_info=True)
+        raise
     finally:
         resource_monitor.force_cleanup()
 
@@ -399,7 +391,7 @@ def classify_document(text: str) -> str:
     try:
         result = claude_call_haiku(text, classification_prompt)
         classified_type = result.strip()
-        print(f"classified_type: {classified_type}")
+        # print(f"classified_type: {classified_type}")
         if classified_type in DOCUMENT_TYPES:
             return classified_type
         # If response doesn't match exactly, return None to trigger general prompt
@@ -463,7 +455,7 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
     
     elif analysis_type == 'longSummary':
         doc_type = classify_document(text[:100])
-        print(f"long summary: classified into {doc_type}")
+        # print(f"long summary: classified into {doc_type}")
         logger.info(f"Document classified as: {doc_type}")
 
         if doc_type and doc_type in LONG_SUMMARY_PROMPTS:
@@ -479,7 +471,8 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
     
     elif analysis_type == 'risky':
         doc_type = classify_document(text[:100])
-        print(f"risky: classified into {doc_type}")
+        # print(f"risky: classified into {doc_type}")
+        logger.info(f"Document classified as: {doc_type}")
 
         if doc_type and doc_type in RISK_ANALYSIS_PROMPTS:
             logger.info(f"Document classified as: {doc_type}")
@@ -537,7 +530,7 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
         logger.error(f"Invalid analysis type: {analysis_type}")
         raise ValueError(f"Invalid analysis type: {analysis_type}")
 
-    logger.info(f"Using prompt: {prompt}")
+    # logger.info(f"Using prompt: {prompt}")
 
     try:
         # For explanations, we'll use Claude for more nuanced responses
@@ -547,7 +540,7 @@ def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
             result = gemini_call(text, prompt)
         
         logger.info("API call successful")
-        print(f"result: {result}")
+        # print(f"result: {result}")
         return result
     except Exception as e:
         logger.exception(f"Error calling API for {analysis_type}")
@@ -571,7 +564,7 @@ def has_common_party(texts):
 
     try:
         result = gemini_call("", prompt)
-        logger.info(f"Gemini API response for common party check: {result}")
+        # logger.info(f"Gemini API response for common party check: {result}")
         return result.strip().lower() == 'yes'
     except Exception as e:
         logger.exception("Error checking for common party")
@@ -621,13 +614,12 @@ def gemini_call(text, prompt):
                 top_k=40,  # Added for better response diversity while maintaining relevance
                 )
             )
-        logger.info("Gemini API call successful")
-        prompt_token_count = response.usage_metadata.prompt_token_count
-        output_token_count = response.usage_metadata.candidates_token_count
-        total_token_count = response.usage_metadata.total_token_count
-        print(f"prompt_token_count: {prompt_token_count}")
-        print(f"output_token_count: {output_token_count}")
-        print(f"total_token_count: {total_token_count}")
+        token_counts = {
+            'prompt': response.usage_metadata.prompt_token_count,
+            'output': response.usage_metadata.candidates_token_count,
+            'total': response.usage_metadata.total_token_count
+        }
+        logger.info(f"Gemini API completed - Tokens: {token_counts}")
         return response.text
     except Exception as e:
         logger.error(f"Error calling Gemini API: {str(e)}")
@@ -652,64 +644,66 @@ def claude_call(text, prompt):
                 }
             ]
         )
-        logger.info("Claude API call successful")
+        logger.info(f"Claude Sonnet API completed - Tokens: {response.usage}")
         return response.content[0].text
     except Exception as e:
-        logger.error(f"Error calling Claude API: {str(e)}")
-        raise Exception(f"An error occurred while calling Claude API: {e}")
+        logger.error(f"Claude Sonnet API failed - Error: {str(e)}", exc_info=True)
+        raise
     
 def claude_call_haiku(text, prompt):
     logger.info("Calling Claude HAIKU API")
     
     system_prompt = """You are a highly experienced analyst who is great at analyzing documents and providing insights."""
-    
-    client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
-    response = client.messages.create(
-        model="claude-3-5-haiku-latest",
-        max_tokens=4000,
-        temperature=0.1,
-        system=system_prompt,
-        messages=[{
-            "role": "user",
-            "content": f"{prompt}\n\nDocument:\n{text}"
-        }]
-    )
-    print(response.usage.input_tokens)
-    print(response.usage.output_tokens)
-    return response.content[0].text
+    try:
+        client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+        response = client.messages.create(
+            model="claude-3-5-haiku-latest",
+            max_tokens=4000,
+            temperature=0.1,
+            system=system_prompt,
+            messages=[{
+                "role": "user",
+                "content": f"{prompt}\n\nDocument:\n{text}"
+            }]
+        )
+
+        logger.info(f"Claude HAIKU API completed - Tokens: {response.usage}")
+        return response.content[0].text
+    except Exception as e:
+        logger.error(f"Error calling Claude HAIKU API: {str(e)}")
+        raise Exception(f"An error occurred while calling Claude HAIKU API: {e}")
 
 def claude_call_cache(text, prompt):
     logger.info("Calling Claude SONNET API with prompt caching")
     
     system_prompt = """You are a highly experienced analyst who is great at analyzing documents and providing insights."""
-    
-    client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
-    response = client.beta.prompt_caching.messages.create(
-        model="claude-3-5-sonnet-latest",
-        max_tokens=4000,
-        temperature=0.1,
-        system=[
-            {
-                "type": "text",
-                "text": system_prompt
-            },
-            {
-                "type": "text", 
-                "text": text,
-                "cache_control": {"type": "ephemeral"}
-            }
-        ],
-        messages=[{
-            "role": "user",
-            "content": prompt
-        }]
-    )
-    print(response.usage.cache_creation_input_tokens)
-    print(response.usage.cache_read_input_tokens)
-    print(response.usage.input_tokens)
-    print(response.usage.output_tokens)
-
-    return response.content[0].text
+    try:
+        client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+        response = client.beta.prompt_caching.messages.create(
+            model="claude-3-5-sonnet-latest",
+            max_tokens=4000,
+            temperature=0.1,
+            system=[
+                {
+                    "type": "text",
+                    "text": system_prompt
+                },
+                {
+                    "type": "text", 
+                    "text": text,
+                    "cache_control": {"type": "ephemeral"}
+                }
+            ],
+            messages=[{
+                "role": "user",
+                "content": prompt
+            }]
+        )
+        logger.info(f"Claude Sonnet Cache API completed - Tokens: {response.usage}") 
+        return response.content[0].text
+    except Exception as e:
+        logger.error(f"Error calling Claude Sonnet Cache API: {str(e)}")
+        raise Exception(f"An error occurred while calling Claude Sonnet Cache API: {e}")
 
 def claude_call_explanation(prompt):
     logger.info("Calling Claude SONNET API")
@@ -730,11 +724,11 @@ def claude_call_explanation(prompt):
                 }
             ]
         )
-        logger.info("Claude API call successful")
+        logger.info("Claude Explanation API call successful")
         return response.content[0].text
     except Exception as e:
-        logger.error(f"Error calling Claude API: {str(e)}")
-        raise Exception(f"An error occurred while calling Claude API: {e}")
+        logger.error(f"Error calling Claude Explanation API: {str(e)}")
+        raise Exception(f"An error occurred while calling Claude Explanation API: {e}")
     
 def claude_call_opus(text, prompt):
     logger.info("Calling Claude OPUS API")
@@ -753,14 +747,14 @@ def claude_call_opus(text, prompt):
                 }
             ]
         )
-        logger.info("Claude API call successful")
+        logger.info(f"Claude OPUS API call successful - Tokens: {response.usage}")
         return response.content[0].text
     except Exception as e:
-        logger.error(f"Error calling Claude API: {str(e)}")
-        raise Exception(f"An error occurred while calling Claude API: {e}")
+        logger.error(f"Error calling Claude OPUS API: {str(e)}")
+        raise Exception(f"An error occurred while calling Claude OPUS API: {e}")
     
 def analyze_conflicts_and_common_parties(texts: Dict[str, str]) -> str:
-    logger.info("Analyzing conflicts and common parties")
+    # logger.info("Analyzing conflicts and common parties")
     
     prompt = CONFLICT_ANALYSIS_PROMPT
 
@@ -782,7 +776,7 @@ def analyze_document_clauses(text: str, party_info: dict = None) -> dict:
     if party_info:
         party_name = party_info.get('name', '')
         party_role = party_info.get('role', '')
-        print(f"party name: {party_name}")
+        # print(f"party name: {party_name}")
         prompt = f"""
         Analyze the following legal document from the perspective of {party_name} 
         (acting as {party_role}) and categorize its clauses into three categories:
@@ -844,7 +838,7 @@ def analyze_document_clauses(text: str, party_info: dict = None) -> dict:
     
     try:
         result = claude_call(text, prompt)
-        print(f"result: {result}")
+        # print(f"result: {result}")
         return result
     except Exception as e:
         logger.error(f"Error in clause analysis: {str(e)}")
@@ -876,7 +870,7 @@ def analyze_document_parties(text: str) -> list:
     
     try:
         result = claude_call_haiku(text, prompt)
-        print(f"result of party analysis: {result}")
+        # print(f"result of party analysis: {result}")
         return result
     except Exception as e:
         logger.error(f"Error in party analysis: {str(e)}")
@@ -1022,9 +1016,9 @@ Provide your analysis in this structure:
             party_analysis = claude_call_cache(text, prompt)
             analyses[party['name']] = party_analysis
             # Analyze each party individually
-            print('*' * 100)
+            # print('*' * 100)
             party_analysis = claude_call_cache(text, prompt)
-            print('*' * 100)
+            # print('*' * 100)
             
             # Add to analyses dictionary with party name as key
         except Exception as e:

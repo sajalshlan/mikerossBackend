@@ -158,17 +158,13 @@ def upload_file(request):
     """
     Handles file uploads with memory-efficient processing.
     """
-    logger.info(f"Upload request from user: {request.user.username} (is_root: {request.user.is_root})")
-    logger.info(f"User organization: {request.user.organization}")
+    logger.info(f"Upload initiated - User: {request.user.username}, Organization: {request.user.organization}")
     
     if not request.user.organization and not request.user.is_root:
-        logger.warning(f"No organization associated with user {request.user.username}")
+        logger.warning(f"Upload rejected - User {request.user.username} has no organization")
         return Response({
             'error': 'No organization associated',
-            'details': {
-                'is_root': request.user.is_root,
-                'has_organization': bool(request.user.organization)
-            }
+            'details': {'is_root': request.user.is_root, 'has_organization': bool(request.user.organization)}
         }, status=400)
     
     file = request.FILES.get('file')
@@ -203,29 +199,29 @@ def upload_file(request):
         
         # Process file based on type
         if file.name.lower().endswith('.zip'):
-            print("Processing ZIP file")
+            # print("Processing ZIP file")
             extracted_contents = extract_text_from_zip(file_path, rag_pipeline)
             total_time = time.time() - total_start_time
-            print(f"Total processing time: {total_time:.2f} seconds (chunking: {chunk_time:.2f}s)")
+            # print(f"Total processing time: {total_time:.2f} seconds (chunking: {chunk_time:.2f}s)")
             return Response({'success': True, 'files': extracted_contents})
         else:
-            print("\nProcessing single file")
+            # print("\nProcessing single file")
             process_start_time = time.time()
             result = process_single_file(file_path, file_extension)
             process_time = time.time() - process_start_time
             total_time = time.time() - total_start_time
             
-            print("Timing Breakdown:")
-            print(f"- Chunking: {chunk_time:.2f}s")
-            print(f"- Processing: {process_time:.2f}s")
-            print(f"- Total time: {total_time:.2f}s")
-            logger.info('-' * 50)
-            logger.info(f"Timing Breakdown: - Chunking: {chunk_time:.2f}s - Processing: {process_time:.2f}s - Total time: {total_time:.2f}s")
-            logger.info('-' * 50)
+            # print("Timing Breakdown:")
+            # print(f"- Chunking: {chunk_time:.2f}s")
+            # print(f"- Processing: {process_time:.2f}s")
+            # print(f"- Total time: {total_time:.2f}s")
+            # logger.info('-' * 50)
+            # logger.info(f"Timing Breakdown: - Chunking: {chunk_time:.2f}s - Processing: {process_time:.2f}s - Total time: {total_time:.2f}s")
+            # logger.info('-' * 50)
             return Response(result)
             
     except Exception as e:
-        logger.error(f"Error processing file: {str(e)}")
+        logger.error(f"Upload failed - File: {file.name}, Error: {str(e)}", exc_info=True)
         return Response({'error': str(e)}, status=500)
     finally:
         if extracted_contents is not None:
@@ -234,7 +230,7 @@ def upload_file(request):
             del result
         if os.path.exists(file_path):
             os.remove(file_path)
-            logger.info(f"Removed temporary file: {file_path}")
+            # logger.info(f"Removed temporary file: {file_path}")
         resource_monitor.force_cleanup()
 
 @csrf_exempt
@@ -244,11 +240,11 @@ def perform_analysis(request):
     """
     Performs text analysis with memory management.
     """
-    resource_monitor.log_memory("Starting analysis request")
+    analysis_type = request.data.get('analysis_type')
+    logger.info(f"Analysis started - Type: {analysis_type}, User: {request.user.username}")
     
     text = None
     try:
-        analysis_type = request.data.get('analysis_type')
         text = request.data.get('text')
         filename = request.data.get('filename')
         ocr_text = request.data.get('ocr_text')
@@ -279,7 +275,7 @@ def perform_analysis(request):
             context_parts = []
             
             if referenced_text:
-                print(f"referenced_text: {referenced_text}")
+                # print(f"referenced_text: {referenced_text}")
                 # If there's referenced text, use it as primary context
                 context_parts.extend([
                     f'Selected Text for Reference:\n{referenced_text}',
@@ -296,11 +292,14 @@ def perform_analysis(request):
             text = '\n\n'.join(context_parts)
         result = analyze_text(analysis_type, text or ocr_text)
         if 'error' in result:
-            return Response(
-                result, 
-                status=400 if 'Invalid analysis type' in result['error'] else 500
-            )
+            logger.warning(f"Analysis failed - Type: {analysis_type}, Error: {result['error']}")
+            return Response(result, status=400 if 'Invalid analysis type' in result['error'] else 500)
+            
+        logger.info(f"Analysis completed - Type: {analysis_type}")
         return Response(result)
+    except Exception as e:
+        logger.error(f"Analysis error - Type: {analysis_type}, Error: {str(e)}", exc_info=True)
+        return Response({'error': str(e)}, status=500)
     finally:
         del text
         resource_monitor.force_cleanup()
@@ -312,7 +311,8 @@ def perform_conflict_check(request):
     """
     Performs conflict check with memory management.
     """
-    resource_monitor.log_memory("Starting conflict check")
+    logger.info(f"Conflict check started - User: {request.user.username}")
+    
     texts = request.data.get('texts')
     
     if not texts or not isinstance(texts, dict) or len(texts) < 2:
@@ -331,10 +331,10 @@ def perform_conflict_check(request):
             parties = json.loads(parties_json)['parties']
             parties_by_file[filename] = parties
         
-        print(f"parties_by_file: {parties_by_file}")
+        # print(f"parties_by_file: {parties_by_file}")
         # Check for common parties using gemini flash
         has_common = check_common_parties(parties_by_file)
-        logger.info(f"Common parties check result: {has_common}")
+        # logger.info(f"Common parties check result: {has_common}")
 
         formatted_texts = ""
         for filename, content in texts.items():
@@ -349,12 +349,13 @@ def perform_conflict_check(request):
         # Then perform the regular conflict analysis
         # result = analyze_conflicts_and_common_parties(texts)
         common_parties = has_common['common_parties']
-        logger.info(f"Common parties identified: {common_parties}")
+        # logger.info(f"Common parties identified: {common_parties}")
         
         # Analyze conflicts for common parties
         if common_parties:
+            logger.info(f"Common parties found. Performing conflict analysis.")
             conflict_analyses = analyze_conflicts(formatted_texts,common_parties)
-            logger.info(f"Conflict analyses completed: {conflict_analyses}")
+            logger.info(f"Conflict analyses completed.")
             
             result = {
                 'has_common_parties': True,
@@ -368,13 +369,13 @@ def perform_conflict_check(request):
                 'analyses': {}
             }
         
-        logger.info(f"Final result structure: {result}")
+        # logger.info(f"Final result structure: {result}")
         return Response({
             'success': True,
             'result': result
         })
     except Exception as e:
-        logger.exception("Error performing conflict check")
+        logger.error(f"Conflict check failed - Error: {str(e)}", exc_info=True)
         return Response({'error': str(e)}, status=500)
     finally:
         # Clean up the texts dictionary
@@ -397,9 +398,11 @@ def get_user_profile(request):
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     def post(self, request, *args, **kwargs):
-        logger.info(f"Login attempt with username: {request.data.get('username')}")
+        username = request.data.get('username')
+        logger.info(f"Login attempt - Username: {username}")
+        
         response = super().post(request, *args, **kwargs)
-        logger.info(f"Login response status: {response.status_code}")
+        logger.info(f"Login {response.status_code} - Username: {username}")
         return response
 
 @api_view(['GET', 'PATCH'])
@@ -773,7 +776,7 @@ def brainstorm_chat(request):
 
         Focus on being constructive and solution-oriented while maintaining legal accuracy.
         """
-        print(prompt)
+        # print(prompt)
         result = claude_call_explanation(prompt)
         return Response({
             'success': True,
