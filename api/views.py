@@ -958,22 +958,27 @@ def get_api_summary(request):
         )
 
         # Create a unique filename for this request
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        output_file = f'api_summary_{timestamp}.json'
-        output_path = os.path.join(settings.BASE_DIR, output_file)
+        # output_file = 'api_summary.json'
+        # output_path = os.path.join(settings.BASE_DIR, output_file)
+
+        output_file = f'api_summary_{target_date.strftime("%d-%m-%Y")}.json'
+        output_path = os.path.join(settings.BASE_DIR, 'api_summaries', output_file)
+
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
         # Generate the summary
         if date_str:
             call_command('generate_api_summary', date=date_str, output=output_path)
         else:
-            call_command('generate_api_summary', output=output_path)
+            today = timezone.now().date().strftime("%d-%m-%Y")
+            call_command('generate_api_summary', date=today, output=output_path)
 
         # Read the generated file
         with open(output_path, 'r') as f:
             summary = json.load(f)
 
         # Clean up the file
-        os.remove(output_path)
+        # os.remove(output_path)
 
         # Initialize response structure
         formatted_response = {
