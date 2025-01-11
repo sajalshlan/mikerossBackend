@@ -409,27 +409,27 @@ def classify_document(text: str) -> str:
         logger.error(f"Error in document classification: {e}")
         return None
 
-def classify_document_new(text: str) -> str:
-    classification_prompt = """
-    You are a legal document classifier. Based on the document provided, classify it into ONE of the following categories:
+# def classify_document_new(text: str) -> str:
+#     classification_prompt = """
+#     You are a legal document classifier. Based on the document provided, classify it into ONE of the following categories:
     
-    {}
+#     {}
     
-    Consider the document's primary purpose, structure, and content. Respond ONLY with the exact category name from the list above. 
-    Provide ONLY the category name, no other text or explanation.
-    """.format("\n".join(DOCUMENT_CATEGORIES))
+#     Consider the document's primary purpose, structure, and content. Respond ONLY with the exact category name from the list above. 
+#     Provide ONLY the category name, no other text or explanation.
+#     """.format("\n".join(DOCUMENT_CATEGORIES))
 
-    try:
-        result = claude_call(text, classification_prompt)
-        classified_type = result.strip()
-        if classified_type in DOCUMENT_CATEGORIES:
-            print(f"classified_type: {classified_type}")
-            return classified_type
-        logger.warning(f"Invalid classification result: {classified_type}")
-        return None
-    except Exception as e:
-        logger.error(f"Error in document classification: {e}")
-        return None
+#     try:
+#         result = claude_call(text, classification_prompt)
+#         classified_type = result.strip()
+#         if classified_type in DOCUMENT_CATEGORIES:
+#             print(f"classified_type: {classified_type}")
+#             return classified_type
+#         logger.warning(f"Invalid classification result: {classified_type}")
+#         return None
+#     except Exception as e:
+#         logger.error(f"Error in document classification: {e}")
+#         return None
 
 def perform_analysis(analysis_type: str, text: str, file_extension=None) -> str:
     """
@@ -843,7 +843,7 @@ def analyze_document_clauses(text: str, party_info: dict = None) -> dict:
         """
     
     try:
-        result = gemini_call(text, prompt)
+        result = claude_call(text, prompt)
         print(f"result: {result}")
         return result
     except Exception as e:
