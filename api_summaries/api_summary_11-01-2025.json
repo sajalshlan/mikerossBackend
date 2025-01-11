@@ -1,0 +1,92 @@
+{
+  "date": "11/01/25",
+  "total_api_calls": 3,
+  "organizations": {
+    "No Organization": {
+      "total_calls": 3,
+      "users": {
+        "sajal": {
+          "total_calls": 3,
+          "status_codes": {
+            "200": 3
+          },
+          "endpoints": {
+            "http://localhost:8000/api/upload_file/": 3
+          },
+          "avg_execution_time": 0.6591466666666667
+        }
+      }
+    }
+  },
+  "status_code_distribution": {
+    "200": 3
+  },
+  "average_execution_time": 0.6591466666666667,
+  "peak_hour": "13:00 IST (2 calls)",
+  "hourly_distribution": {
+    "12": 1,
+    "13": 2
+  },
+  "endpoint_distribution": {
+    "upload_file/": {
+      "count": 3,
+      "avg_time": "0.6591s",
+      "max_time": "1.6608s",
+      "min_time": "0.1424s",
+      "median_time": "0.1742s",
+      "percentage": "100.0%",
+      "organizations": {
+        "No Organization": {
+          "count": 3,
+          "avg_time": "0.6591s",
+          "max_time": "1.6608s",
+          "min_time": "0.1424s",
+          "median_time": "0.1742s",
+          "percentage": "100.0%",
+          "users": {
+            "sajal": {
+              "count": 3,
+              "avg_time": "0.6591s",
+              "max_time": "1.6608s",
+              "min_time": "0.1424s",
+              "median_time": "0.1742s",
+              "percentage": "100.0%"
+            }
+          }
+        }
+      }
+    }
+  },
+  "logs": [
+    {
+      "id": 1166,
+      "endpoint": "http://localhost:8000/api/upload_file/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "1.66083s",
+      "timestamp": "11/01/25 12:36:41",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1202,
+      "endpoint": "http://localhost:8000/api/upload_file/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "0.17425s",
+      "timestamp": "11/01/25 13:10:25",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1220,
+      "endpoint": "http://localhost:8000/api/upload_file/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "0.14236s",
+      "timestamp": "11/01/25 13:12:01",
+      "organization": "No Organization",
+      "user": "sajal"
+    }
+  ]
+}

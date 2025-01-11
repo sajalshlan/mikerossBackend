@@ -2,6 +2,42 @@ from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import AccessToken
 from django.conf import settings
 import jwt
+from django.db import connection
+import logging
+
+logger = logging.getLogger(__name__)
+
+class DatabaseConnectionMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # Before the view is called
+        try:
+            # First ensure connection exists
+            if connection.connection is None:
+                connection.connect()
+            # Then check if it's usable
+            elif not connection.is_usable():
+                logger.info("Database connection was stale, reconnecting...")
+                connection.close()
+                connection.connect()
+        except Exception as e:
+            logger.error(f"Error checking database connection: {e}")
+
+        # Process the request
+        response = self.get_response(request)
+
+        # After the view is called, before logging
+        try:
+            if connection.connection and not connection.is_usable():
+                logger.info("Database connection lost during request, reconnecting...")
+                connection.close()
+                connection.connect()
+        except Exception as e:
+            logger.error(f"Error checking database connection after request: {e}")
+
+        return response
 
 class APILoggerMiddlewareCustom:
     def __init__(self, get_response):
@@ -20,7 +56,6 @@ class APILoggerMiddlewareCustom:
         return None
 
     def __call__(self, request):
-
         # Get token from Authorization header
         auth_header = request.META.get('HTTP_AUTHORIZATION', '')
         if auth_header.startswith('Bearer '):

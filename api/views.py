@@ -47,7 +47,6 @@ logger = logging.getLogger(__name__)
 rag_pipeline = RAGPipeline()
 resource_monitor = ResourceMonitor()
 
-# Add this constant near the top of the file
 COUNTED_ENDPOINTS = [
     'upload_file/',
     'perform_analysis/',
@@ -1124,8 +1123,7 @@ def get_api_summary(request):
                         org_name = f'Unknown Org ({org_id})'
 
                 # Only include logs that match the filters
-                if (not org_filter or org_name.lower() == org_filter.lower()) and \
-                   (not user_filter or username.lower() == user_filter.lower()):
+                if (not org_filter or org_name.lower() == org_filter.lower()) and (not user_filter or username.lower() == user_filter.lower()):
                     formatted_logs.append({
                         'id': log.id,
                         'endpoint': log.api,
