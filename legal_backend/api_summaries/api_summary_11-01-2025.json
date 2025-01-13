@@ -1,0 +1,415 @@
+{
+  "date": "11/01/25",
+  "total_api_calls": 26,
+  "organizations": {
+    "No Organization": {
+      "total_calls": 26,
+      "users": {
+        "sajal": {
+          "total_calls": 26,
+          "status_codes": {
+            "200": 26
+          },
+          "endpoints": {
+            "http://localhost:8000/api/upload_file/": 16,
+            "https://127.0.0.1:8000/api/explain_text/": 1,
+            "https://127.0.0.1:8000/api/brainstorm_chat/": 2,
+            "https://127.0.0.1:8000/api/perform_analysis/": 2,
+            "http://localhost:8000/api/perform_analysis/": 5
+          },
+          "avg_execution_time": 23.780741538461537
+        }
+      }
+    }
+  },
+  "status_code_distribution": {
+    "200": 26
+  },
+  "average_execution_time": 23.780741538461537,
+  "peak_hour": "00:00 IST (7 calls)",
+  "hourly_distribution": {
+    "12": 1,
+    "13": 2,
+    "18": 5,
+    "23": 6,
+    "00": 7,
+    "01": 4,
+    "02": 1
+  },
+  "endpoint_distribution": {
+    "upload_file/": {
+      "count": 16,
+      "avg_time": "0.2837s",
+      "max_time": "1.6608s",
+      "min_time": "0.1260s",
+      "median_time": "0.1695s",
+      "percentage": "61.5%",
+      "organizations": {
+        "No Organization": {
+          "count": 16,
+          "avg_time": "0.2837s",
+          "max_time": "1.6608s",
+          "min_time": "0.1260s",
+          "median_time": "0.1695s",
+          "percentage": "100.0%",
+          "users": {
+            "sajal": {
+              "count": 16,
+              "avg_time": "0.2837s",
+              "max_time": "1.6608s",
+              "min_time": "0.1260s",
+              "median_time": "0.1695s",
+              "percentage": "100.0%"
+            }
+          }
+        }
+      }
+    },
+    "explain_text/": {
+      "count": 1,
+      "avg_time": "6.0497s",
+      "max_time": "6.0497s",
+      "min_time": "6.0497s",
+      "median_time": "6.0497s",
+      "percentage": "3.8%",
+      "organizations": {
+        "No Organization": {
+          "count": 1,
+          "avg_time": "6.0497s",
+          "max_time": "6.0497s",
+          "min_time": "6.0497s",
+          "median_time": "6.0497s",
+          "percentage": "100.0%",
+          "users": {
+            "sajal": {
+              "count": 1,
+              "avg_time": "6.0497s",
+              "max_time": "6.0497s",
+              "min_time": "6.0497s",
+              "median_time": "6.0497s",
+              "percentage": "100.0%"
+            }
+          }
+        }
+      }
+    },
+    "chat/": {
+      "count": 2,
+      "avg_time": "9.9807s",
+      "max_time": "10.5340s",
+      "min_time": "9.4274s",
+      "median_time": "9.9807s",
+      "percentage": "7.7%",
+      "organizations": {
+        "No Organization": {
+          "count": 2,
+          "avg_time": "9.9807s",
+          "max_time": "10.5340s",
+          "min_time": "9.4274s",
+          "median_time": "9.9807s",
+          "percentage": "100.0%",
+          "users": {
+            "sajal": {
+              "count": 2,
+              "avg_time": "9.9807s",
+              "max_time": "10.5340s",
+              "min_time": "9.4274s",
+              "median_time": "9.9807s",
+              "percentage": "100.0%"
+            }
+          }
+        }
+      }
+    },
+    "perform_analysis/": {
+      "count": 7,
+      "avg_time": "83.9642s",
+      "max_time": "94.2024s",
+      "min_time": "76.0894s",
+      "median_time": "81.2708s",
+      "percentage": "26.9%",
+      "organizations": {
+        "No Organization": {
+          "count": 7,
+          "avg_time": "83.9642s",
+          "max_time": "94.2024s",
+          "min_time": "76.0894s",
+          "median_time": "81.2708s",
+          "percentage": "100.0%",
+          "users": {
+            "sajal": {
+              "count": 7,
+              "avg_time": "83.9642s",
+              "max_time": "94.2024s",
+              "min_time": "76.0894s",
+              "median_time": "81.2708s",
+              "percentage": "100.0%"
+            }
+          }
+        }
+      }
+    }
+  },
+  "logs": [
+    {
+      "id": 1166,
+      "endpoint": "http://localhost:8000/api/upload_file/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "1.66083s",
+      "timestamp": "11/01/25 12:36:41",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1202,
+      "endpoint": "http://localhost:8000/api/upload_file/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "0.17425s",
+      "timestamp": "11/01/25 13:10:25",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1220,
+      "endpoint": "http://localhost:8000/api/upload_file/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "0.14236s",
+      "timestamp": "11/01/25 13:12:01",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1262,
+      "endpoint": "https://127.0.0.1:8000/api/explain_text/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "6.04970s",
+      "timestamp": "11/01/25 18:12:42",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1263,
+      "endpoint": "https://127.0.0.1:8000/api/brainstorm_chat/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "9.42735s",
+      "timestamp": "11/01/25 18:16:15",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1264,
+      "endpoint": "https://127.0.0.1:8000/api/perform_analysis/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "92.40219s",
+      "timestamp": "11/01/25 18:26:45",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1265,
+      "endpoint": "https://127.0.0.1:8000/api/perform_analysis/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "76.08944s",
+      "timestamp": "11/01/25 18:26:45",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1266,
+      "endpoint": "https://127.0.0.1:8000/api/brainstorm_chat/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "10.53404s",
+      "timestamp": "11/01/25 18:30:42",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1277,
+      "endpoint": "http://localhost:8000/api/upload_file/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "0.15220s",
+      "timestamp": "11/01/25 23:42:38",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1278,
+      "endpoint": "http://localhost:8000/api/perform_analysis/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "80.93939s",
+      "timestamp": "11/01/25 23:44:14",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1283,
+      "endpoint": "http://localhost:8000/api/upload_file/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "0.12604s",
+      "timestamp": "11/01/25 23:51:06",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1290,
+      "endpoint": "http://localhost:8000/api/upload_file/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "0.13109s",
+      "timestamp": "11/01/25 23:57:17",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1291,
+      "endpoint": "http://localhost:8000/api/upload_file/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "0.29667s",
+      "timestamp": "11/01/25 23:57:36",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1295,
+      "endpoint": "http://localhost:8000/api/upload_file/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "0.34473s",
+      "timestamp": "11/01/25 23:58:14",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1299,
+      "endpoint": "http://localhost:8000/api/upload_file/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "0.32426s",
+      "timestamp": "12/01/25 00:00:11",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1301,
+      "endpoint": "http://localhost:8000/api/upload_file/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "0.15754s",
+      "timestamp": "12/01/25 00:00:17",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1302,
+      "endpoint": "http://localhost:8000/api/perform_analysis/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "94.20236s",
+      "timestamp": "12/01/25 00:02:04",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1305,
+      "endpoint": "http://localhost:8000/api/upload_file/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "0.16469s",
+      "timestamp": "12/01/25 00:02:28",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1306,
+      "endpoint": "http://localhost:8000/api/perform_analysis/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "82.32596s",
+      "timestamp": "12/01/25 00:03:53",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1309,
+      "endpoint": "http://localhost:8000/api/upload_file/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "0.18257s",
+      "timestamp": "12/01/25 00:07:22",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1310,
+      "endpoint": "http://localhost:8000/api/perform_analysis/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "81.27080s",
+      "timestamp": "12/01/25 00:08:49",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1313,
+      "endpoint": "http://localhost:8000/api/upload_file/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "0.14538s",
+      "timestamp": "12/01/25 01:17:41",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1314,
+      "endpoint": "http://localhost:8000/api/perform_analysis/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "80.51945s",
+      "timestamp": "12/01/25 01:19:06",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1317,
+      "endpoint": "http://localhost:8000/api/upload_file/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "0.20229s",
+      "timestamp": "12/01/25 01:50:23",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1320,
+      "endpoint": "http://localhost:8000/api/upload_file/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "0.15475s",
+      "timestamp": "12/01/25 01:51:25",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1333,
+      "endpoint": "http://localhost:8000/api/upload_file/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "0.17895s",
+      "timestamp": "12/01/25 02:38:48",
+      "organization": "No Organization",
+      "user": "sajal"
+    }
+  ]
+}

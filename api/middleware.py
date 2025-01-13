@@ -4,6 +4,7 @@ from django.conf import settings
 import jwt
 from django.db import connection
 import logging
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -16,14 +17,20 @@ class DatabaseConnectionMiddleware:
         try:
             # First ensure connection exists
             if connection.connection is None:
+                logger.info("No database connection exists, creating new connection...")
                 connection.connect()
             # Then check if it's usable
             elif not connection.is_usable():
-                logger.info("Database connection was stale, reconnecting...")
+                logger.warning("Database connection was stale, reconnecting... Connection age: %s", 
+                             getattr(connection.connection, '_last_use_time', 'unknown'))
                 connection.close()
                 connection.connect()
+            
+            # Add a timestamp to track connection age
+            connection.connection._last_use_time = timezone.now()
+            
         except Exception as e:
-            logger.error(f"Error checking database connection: {e}")
+            logger.error(f"Error checking database connection: {str(e)}", exc_info=True)
 
         # Process the request
         response = self.get_response(request)
@@ -31,12 +38,11 @@ class DatabaseConnectionMiddleware:
         # After the view is called, before logging
         try:
             if connection.connection and not connection.is_usable():
-                logger.info("Database connection lost during request, reconnecting...")
+                logger.warning("Database connection lost during request, reconnecting...")
                 connection.close()
                 connection.connect()
         except Exception as e:
-            logger.error(f"Error checking database connection after request: {e}")
-
+            logger.error(f"Error checking database connection after request: {str(e)}", exc_info=True)
         return response
 
 class APILoggerMiddlewareCustom:
