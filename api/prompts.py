@@ -27,61 +27,102 @@ DOCUMENT_TYPES = [
     "Tolling Agreement",
     "Slump Sale Agreement",
     "Patent Assignment Agreement",
-    "Technology License Agreement"
+    "Technology License Agreement",
+    "None of the above"
 ]
 
 SHORT_SUMMARY_PROMPTS = {
-    "Asset Purchase Agreement": """Generate a summary for this Asset Purchase Agreement focusing on: 1. Clear identification of assets being transferred and any liabilities. 2. Representations and warranties provided by the seller, including guarantees on asset quality. 3. Conditions precedent to closing, including third-party consents. 4. Purchase price structure, including adjustments and payment mechanisms. 5. Indemnification obligations and remedies for breaches. 6. Retained vs. assumed liabilities. 7. Tax implications and allocation responsibilities. 8. Post-closing obligations, including warranties and asset transition.""",
+    "Asset Purchase Agreement": """Generate a summary for this document focusing on: 1. Clear identification of assets being transferred and any liabilities. 2. Representations and warranties provided by the seller, including guarantees on asset quality. 3. Conditions precedent to closing, including third-party consents. 4. Purchase price structure, including adjustments and payment mechanisms. 5. Indemnification obligations and remedies for breaches. 6. Retained vs. assumed liabilities. 7. Tax implications and allocation responsibilities. 8. Post-closing obligations, including warranties and asset transition.""",
     
-    "Collaboration Agreement": """Generate a comprehensive summary of this Collaboration Agreement covering: 1. Scope of collaboration, including roles and responsibilities of each party. 2. Financial contributions, profit-sharing mechanisms, and cost-sharing arrangements. 3. Ownership and usage rights for intellectual property created during the collaboration. 4. Confidentiality and data-sharing obligations. 5. Termination conditions, including scenarios leading to termination and effects. 6. Dispute resolution mechanisms, including arbitration or mediation. 7. Milestones and deliverables with deadlines. 8. Exclusivity clauses, if any. 9. Compliance with laws and regulations relevant to the collaboration.""",
+    "Collaboration Agreement": """Generate a comprehensive summary of this document covering: 1. Scope of collaboration, including roles and responsibilities of each party. 2. Financial contributions, profit-sharing mechanisms, and cost-sharing arrangements. 3. Ownership and usage rights for intellectual property created during the collaboration. 4. Confidentiality and data-sharing obligations. 5. Termination conditions, including scenarios leading to termination and effects. 6. Dispute resolution mechanisms, including arbitration or mediation. 7. Milestones and deliverables with deadlines. 8. Exclusivity clauses, if any. 9. Compliance with laws and regulations relevant to the collaboration.""",
     
-    "Confidentiality Agreement": """Summarize this Confidentiality Agreement by detailing: 1. Scope and definition of confidential information. 2. Obligations of receiving and disclosing parties to protect and manage information. 3. Permitted disclosures, including exceptions and obligations during legal proceedings. 4. Duration of confidentiality obligations. 5. Return or destruction of information upon termination. 6. Restrictions on reverse engineering, copying, or misuse. 7. Remedies and penalties for breaches, including liquidated damages. 8. Governing law and jurisdiction for resolving disputes. 9. Provisions for third-party involvement (e.g., subcontractors).""",
+    "Confidentiality Agreement": """Summarize this document by detailing: 1. Scope and definition of confidential information. 2. Obligations of receiving and disclosing parties to protect and manage information. 3. Permitted disclosures, including exceptions and obligations during legal proceedings. 4. Duration of confidentiality obligations. 5. Return or destruction of information upon termination. 6. Restrictions on reverse engineering, copying, or misuse. 7. Remedies and penalties for breaches, including liquidated damages. 8. Governing law and jurisdiction for resolving disputes. 9. Provisions for third-party involvement (e.g., subcontractors).""",
     
-    "Copyright Assignment Agreement": """Summarize this Copyright Assignment Agreement with focus on: 1. Scope of rights being transferred, including moral rights and associated limitations. 2. Representations and warranties by the assignor regarding ownership and non-infringement. 3. Consideration/payment terms for the transfer. 4. Post-assignment obligations, such as ongoing assistance or consultation. 5. Indemnity clauses covering infringement claims or disputes. 6. Termination rights and associated obligations. 7. Retained rights or restrictions on assigned works. 8. Governing law and dispute resolution mechanisms. 9. Documentation and process requirements for completing the assignment.""",
+    "Copyright Assignment Agreement": """Summarize this document with focus on: 1. Scope of rights being transferred, including moral rights and associated limitations. 2. Representations and warranties by the assignor regarding ownership and non-infringement. 3. Consideration/payment terms for the transfer. 4. Post-assignment obligations, such as ongoing assistance or consultation. 5. Indemnity clauses covering infringement claims or disputes. 6. Termination rights and associated obligations. 7. Retained rights or restrictions on assigned works. 8. Governing law and dispute resolution mechanisms. 9. Documentation and process requirements for completing the assignment.""",
     
-    "Escrow Agreement": """Generate a comprehensive summary of this Escrow Agreement, including: 1. Roles and responsibilities of the escrow agent. 2. Conditions for release of escrowed items, including funds or documents. 3. Specific events triggering default and dispute resolution mechanisms. 4. Liability limitations and indemnification clauses for the escrow agent. 5. Fees and expenses borne by the parties for escrow services. 6. Termination provisions, including conditions under which escrow is released or continued. 7. Governing law and jurisdiction. 8. Interest rights on escrowed funds. 9. Security measures and obligations to ensure safety of escrowed items.""",
+    "Escrow Agreement": """Generate a comprehensive summary of this document, including: 1. Roles and responsibilities of the escrow agent. 2. Conditions for release of escrowed items, including funds or documents. 3. Specific events triggering default and dispute resolution mechanisms. 4. Liability limitations and indemnification clauses for the escrow agent. 5. Fees and expenses borne by the parties for escrow services. 6. Termination provisions, including conditions under which escrow is released or continued. 7. Governing law and jurisdiction. 8. Interest rights on escrowed funds. 9. Security measures and obligations to ensure safety of escrowed items.""",
     
-    "Franchise Agreement": """Summarize this Franchise Agreement focusing on: 1. Franchise fees, royalty structures, and payment terms. 2. Territorial rights, including exclusivity provisions. 3. Obligations of the franchisor to provide training, support, and access to brand resources. 4. Obligations of the franchisee to comply with operational and brand standards. 5. Use of trademarks and intellectual property provided by the franchisor. 6. Advertising and marketing obligations. 7. Termination conditions and renewal options, including associated fees. 8. Transferability and assignment of franchise rights. 9. Compliance with franchising regulations and dispute resolution methods.""",
+    "Franchise Agreement": """Summarize this document focusing on: 1. Franchise fees, royalty structures, and payment terms. 2. Territorial rights, including exclusivity provisions. 3. Obligations of the franchisor to provide training, support, and access to brand resources. 4. Obligations of the franchisee to comply with operational and brand standards. 5. Use of trademarks and intellectual property provided by the franchisor. 6. Advertising and marketing obligations. 7. Termination conditions and renewal options, including associated fees. 8. Transferability and assignment of franchise rights. 9. Compliance with franchising regulations and dispute resolution methods.""",
     
-    "Indemnification Agreement": """Generate a detailed summary of this Indemnification Agreement covering: 1. Scope of indemnification, including liabilities covered and exclusions. 2. Trigger events leading to indemnity, such as breach or third-party claims. 3. Obligations of the indemnifying party to defend, reimburse, or settle claims. 4. Liability caps and limitations, if any. 5. Cross-indemnification clauses. 6. Governing law and jurisdiction for resolving disputes. 7. Processes for claiming and substantiating indemnification. 8. Third-party involvement and rights to seek recovery from insurance or subcontractors. 9. Duration of indemnification obligations post-agreement termination.""",
+    "Indemnification Agreement": """Generate a detailed summary of this document covering: 1. Scope of indemnification, including liabilities covered and exclusions. 2. Trigger events leading to indemnity, such as breach or third-party claims. 3. Obligations of the indemnifying party to defend, reimburse, or settle claims. 4. Liability caps and limitations, if any. 5. Cross-indemnification clauses. 6. Governing law and jurisdiction for resolving disputes. 7. Processes for claiming and substantiating indemnification. 8. Third-party involvement and rights to seek recovery from insurance or subcontractors. 9. Duration of indemnification obligations post-agreement termination.""",
     
-    "Joint Venture Agreement": """Generate a comprehensive legal summary of this Joint Venture Agreement by covering: 1. Establishment details, including the formation, registration, and structure of the joint venture entity. 2. Scope of business operations, including objectives and limitations. 3. Share capital structure and conditions for increasing or raising additional capital. 4. Restrictions, procedures, and approvals for transferring shares or ownership interests. 5. Governance structure, including roles of directors, management responsibilities, and decision-making authority. 6. Conduct expectations, compliance policies, and operational standards. 7. Intellectual property ownership, licensing, and usage rights. 8. Non-compete and exclusivity clauses. 9. Deadlock resolution mechanisms, such as buyouts, escalation, or arbitration. 10. Dividend distribution policy, including timing and conditions. 11. Termination provisions, including post-termination obligations. 12. Remedies and penalties for breaches. 13. Liability and indemnification obligations.""",
+    "Joint Venture Agreement": """Generate a comprehensive legal summary of this document by covering: 1. Establishment details, including the formation, registration, and structure of the joint venture entity. 2. Scope of business operations, including objectives and limitations. 3. Share capital structure and conditions for increasing or raising additional capital. 4. Restrictions, procedures, and approvals for transferring shares or ownership interests. 5. Governance structure, including roles of directors, management responsibilities, and decision-making authority. 6. Conduct expectations, compliance policies, and operational standards. 7. Intellectual property ownership, licensing, and usage rights. 8. Non-compete and exclusivity clauses. 9. Deadlock resolution mechanisms, such as buyouts, escalation, or arbitration. 10. Dividend distribution policy, including timing and conditions. 11. Termination provisions, including post-termination obligations. 12. Remedies and penalties for breaches. 13. Liability and indemnification obligations.""",
     
-    "Lease Agreement": """Summarize this Lease Agreement focusing on: 1. Rent amount, payment schedule, and conditions for the security deposit. 2. Duration of the lease, including renewal and termination options. 3. Obligations for property maintenance by the tenant and the landlord. 4. Use restrictions, such as residential, commercial, or other specific uses. 5. Provisions for subletting or assignment of lease rights. 6. Conditions for early termination and consequences for breach. 7. Dispute resolution mechanisms and governing law. 8. Inspection and access rights of the landlord. 9. Modifications allowed to the property and related responsibilities.""",
+    "Lease Agreement": """Summarize this document focusing on: 1. Rent amount, payment schedule, and conditions for the security deposit. 2. Duration of the lease, including renewal and termination options. 3. Obligations for property maintenance by the tenant and the landlord. 4. Use restrictions, such as residential, commercial, or other specific uses. 5. Provisions for subletting or assignment of lease rights. 6. Conditions for early termination and consequences for breach. 7. Dispute resolution mechanisms and governing law. 8. Inspection and access rights of the landlord. 9. Modifications allowed to the property and related responsibilities.""",
     
-    "Loan Agreement": """Summarize this Loan Agreement focusing on: 1. Principal amount, interest rate, and repayment schedule. 2. Prepayment penalties and options. 3. Security or collateral requirements. 4. Events of default and remedies available to the lender. 5. Financial covenants and borrower obligations. 6. Representations and warranties of the borrower. 7. Indemnification and liability limitations. 8. Governing law and jurisdiction. 9. Cross-default clauses and consequences.""",
+    "Loan Agreement": """Summarize this document focusing on: 1. Principal amount, interest rate, and repayment schedule. 2. Prepayment penalties and options. 3. Security or collateral requirements. 4. Events of default and remedies available to the lender. 5. Financial covenants and borrower obligations. 6. Representations and warranties of the borrower. 7. Indemnification and liability limitations. 8. Governing law and jurisdiction. 9. Cross-default clauses and consequences.""",
     
-    "Loan Purchase Agreement": """Summarize this Loan Purchase Agreement focusing on: 1. Purchase price and payment terms. 2. Representations and warranties regarding loan quality. 3. Recourse and indemnification provisions in case of defaults. 4. Assignment and transfer restrictions. 5. Post-closing obligations, including notice to borrowers. 6. Conditions precedent for completing the transaction. 7. Governing law and dispute resolution mechanisms.""",
+    "Loan Purchase Agreement": """Summarize this document focusing on: 1. Purchase price and payment terms. 2. Representations and warranties regarding loan quality. 3. Recourse and indemnification provisions in case of defaults. 4. Assignment and transfer restrictions. 5. Post-closing obligations, including notice to borrowers. 6. Conditions precedent for completing the transaction. 7. Governing law and dispute resolution mechanisms.""",
     
-    "Investment Agreement": """Summarize this Investment Agreement focusing on: 1. Amount of investment and valuation. 2. Rights attached to the investment, such as equity, debt, or convertible instruments. 3. Investor rights, including board seats, information access, and veto powers. 4. Exit mechanisms, such as IPO or buyback options. 5. Anti-dilution provisions and pre-emption rights. 6. Conditions precedent to the investment. 7. Representations and warranties by the investee. 8. Indemnity provisions for breaches. 9. Drag-along and tag-along rights.""",
+    "Investment Agreement": """Summarize this document focusing on: 1. Amount of investment and valuation. 2. Rights attached to the investment, such as equity, debt, or convertible instruments. 3. Investor rights, including board seats, information access, and veto powers. 4. Exit mechanisms, such as IPO or buyback options. 5. Anti-dilution provisions and pre-emption rights. 6. Conditions precedent to the investment. 7. Representations and warranties by the investee. 8. Indemnity provisions for breaches. 9. Drag-along and tag-along rights.""",
     
-    "Share Purchase Agreement": """Summarize this Share Purchase Agreement focusing on: 1. Purchase price, payment terms, and adjustments. 2. Representations and warranties provided by the seller. 3. Conditions precedent to closing. 4. Transfer of title and ownership. 5. Post-closing covenants, including warranties and indemnification. 6. Restrictions on future share transfers. 7. Governing law and dispute resolution.""",
+    "Share Purchase Agreement": """Summarize this document focusing on: 1. Purchase price, payment terms, and adjustments. 2. Representations and warranties provided by the seller. 3. Conditions precedent to closing. 4. Transfer of title and ownership. 5. Post-closing covenants, including warranties and indemnification. 6. Restrictions on future share transfers. 7. Governing law and dispute resolution.""",
     
-    "Non-Compete Agreement": """Summarize this Non-Compete Agreement focusing on: 1. Scope of restricted activities and industries. 2. Duration and geographic limits of the restrictions. 3. Consideration or compensation for the non-compete obligations. 4. Enforceability based on jurisdictional laws. 5. Exceptions to restrictions, if any. 6. Remedies and penalties for breaches.""",
+    "Non-Compete Agreement": """Summarize this document focusing on: 1. Scope of restricted activities and industries. 2. Duration and geographic limits of the restrictions. 3. Consideration or compensation for the non-compete obligations. 4. Enforceability based on jurisdictional laws. 5. Exceptions to restrictions, if any. 6. Remedies and penalties for breaches.""",
     
-    "Non-Disclosure Agreement (NDA)": """Summarize this Non-Disclosure Agreement focusing on: 1. Definition and scope of confidential information. 2. Permitted disclosures and obligations of both parties. 3. Duration of confidentiality obligations. 4. Consequences for breach, including damages or termination. 5. Governing law and jurisdiction.""",
+    "Non-Disclosure Agreement (NDA)": """Summarize this document focusing on: 1. Definition and scope of confidential information. 2. Permitted disclosures and obligations of both parties. 3. Duration of confidentiality obligations. 4. Consequences for breach, including damages or termination. 5. Governing law and jurisdiction.""",
     
-    "Partnership Agreement": """Summarize this Partnership Agreement focusing on: 1. Contributions (capital, assets, skills) by each partner. 2. Profit and loss sharing ratios. 3. Roles and responsibilities of each partner. 4. Decision-making processes and voting rights. 5. Exit and buyout provisions. 6. Non-compete clauses and dispute resolution mechanisms. 7. Liability and indemnification obligations.""",
+    "Partnership Agreement": """Summarize this document focusing on: 1. Contributions (capital, assets, skills) by each partner. 2. Profit and loss sharing ratios. 3. Roles and responsibilities of each partner. 4. Decision-making processes and voting rights. 5. Exit and buyout provisions. 6. Non-compete clauses and dispute resolution mechanisms. 7. Liability and indemnification obligations.""",
     
-    "Pledge Agreement": """Summarize this Pledge Agreement focusing on: 1. Identification of pledged assets or collateral. 2. Conditions for enforcement of the pledge. 3. Events of default triggering enforcement. 4. Rights of the pledgee upon default, including sale or retention. 5. Obligations of the pledgor to maintain collateral value. 6. Governing law and impact of bankruptcy.""",
+    "Pledge Agreement": """Summarize this document focusing on: 1. Identification of pledged assets or collateral. 2. Conditions for enforcement of the pledge. 3. Events of default triggering enforcement. 4. Rights of the pledgee upon default, including sale or retention. 5. Obligations of the pledgor to maintain collateral value. 6. Governing law and impact of bankruptcy.""",
     
-    "Real Estate Agreement to Sell": """Summarize this Real Estate Agreement to Sell focusing on: 1. Description of the property, including boundaries and key details. 2. Purchase price and payment schedule. 3. Conditions precedent to sale, such as title clearance. 4. Representations and warranties by the seller. 5. Post-sale obligations and dispute resolution mechanisms.""",
+    "Real Estate Agreement to Sell": """Summarize this document to Sell focusing on: 1. Description of the property, including boundaries and key details. 2. Purchase price and payment schedule. 3. Conditions precedent to sale, such as title clearance. 4. Representations and warranties by the seller. 5. Post-sale obligations and dispute resolution mechanisms.""",
     
-    "Real Estate Purchase Agreement": """Summarize this Real Estate Purchase Agreement focusing on: 1. Purchase price and financial terms. 2. Description of the property, including legal and physical characteristics. 3. Title and encumbrance checks. 4. Conditions precedent to closing, such as financing or permits. 5. Dispute resolution and governing law.""",
+    "Real Estate Purchase Agreement": """Summarize this document focusing on: 1. Purchase price and financial terms. 2. Description of the property, including legal and physical characteristics. 3. Title and encumbrance checks. 4. Conditions precedent to closing, such as financing or permits. 5. Dispute resolution and governing law.""",
     
-    "Shareholders' Agreement": """Summarize this Shareholders' Agreement focusing on: 1. Voting rights and decision-making processes. 2. Dividend policies and profit-sharing arrangements. 3. Restrictions on share transfers, such as right of first refusal or tag-along rights. 4. Board representation and management roles. 5. Exit provisions and anti-dilution clauses.""",
+    "Shareholders' Agreement": """Summarize this document focusing on: 1. Voting rights and decision-making processes. 2. Dividend policies and profit-sharing arrangements. 3. Restrictions on share transfers, such as right of first refusal or tag-along rights. 4. Board representation and management roles. 5. Exit provisions and anti-dilution clauses.""",
     
-    "Services Agreement": """Summarize this Services Agreement focusing on: 1. Scope and timeline of services to be provided. 2. Payment terms and invoicing procedures. 3. Deliverables and performance standards. 4. Termination conditions and notice requirements. 5. Liability and indemnification provisions. 6. Intellectual property rights for service deliverables.""",
+    "Services Agreement": """Summarize this document focusing on: 1. Scope and timeline of services to be provided. 2. Payment terms and invoicing procedures. 3. Deliverables and performance standards. 4. Termination conditions and notice requirements. 5. Liability and indemnification provisions. 6. Intellectual property rights for service deliverables.""",
     
-    "Manufacturing Agreement": """Summarize this Manufacturing Agreement focusing on: 1. Scope and specifications of manufacturing services. 2. Quality control, testing standards, and inspection rights. 3. Payment terms and cost adjustments. 4. Minimum order quantities and lead times. 5. Intellectual property rights and indemnification clauses. 6. Termination provisions and notice requirements.""",
+    "Manufacturing Agreement": """Summarize this document focusing on: 1. Scope and specifications of manufacturing services. 2. Quality control, testing standards, and inspection rights. 3. Payment terms and cost adjustments. 4. Minimum order quantities and lead times. 5. Intellectual property rights and indemnification clauses. 6. Termination provisions and notice requirements.""",
     
-    "Tolling Agreement": """Summarize this Tolling Agreement focusing on: 1. Scope and responsibilities for tolling services. 2. Ownership of raw materials and finished products. 3. Quality control and inspection standards. 4. Payment terms and penalties for delays. 5. Termination conditions and dispute resolution.""",
+    "Tolling Agreement": """Summarize this document focusing on: 1. Scope and responsibilities for tolling services. 2. Ownership of raw materials and finished products. 3. Quality control and inspection standards. 4. Payment terms and penalties for delays. 5. Termination conditions and dispute resolution.""",
     
-    "Slump Sale Agreement": """Summarize this Slump Sale Agreement focusing on: 1. Transfer of business as a going concern, including assets and liabilities. 2. Valuation of the business and purchase price. 3. Transfer of employees and contractual obligations. 4. Representations and warranties by the seller. 5. Indemnity for liabilities such as taxes and debts.""",
+    "Slump Sale Agreement": """Summarize this document focusing on: 1. Transfer of business as a going concern, including assets and liabilities. 2. Valuation of the business and purchase price. 3. Transfer of employees and contractual obligations. 4. Representations and warranties by the seller. 5. Indemnity for liabilities such as taxes and debts.""",
     
-    "Patent Assignment Agreement": """Summarize this Patent Assignment Agreement focusing on: 1. Identification of patents being transferred. 2. Consideration/payment terms. 3. Representations and warranties of ownership. 4. Indemnity provisions for infringement claims. 5. Obligations for transferring related documentation.""",
+    "Patent Assignment Agreement": """Summarize this document focusing on: 1. Identification of patents being transferred. 2. Consideration/payment terms. 3. Representations and warranties of ownership. 4. Indemnity provisions for infringement claims. 5. Obligations for transferring related documentation.""",
     
-    "Technology License Agreement": """Summarize this Technology License Agreement focusing on: 1. Scope of licensed technology, including territorial and exclusivity rights. 2. Payment terms and royalty structure. 3. Restrictions on sublicensing or misuse of the technology. 4. Termination provisions and post-termination obligations. 5. Indemnity and audit rights for royalty calculations."""
+    "Technology License Agreement": """Summarize this document focusing on: 1. Scope of licensed technology, including territorial and exclusivity rights. 2. Payment terms and royalty structure. 3. Restrictions on sublicensing or misuse of the technology. 4. Termination provisions and post-termination obligations. 5. Indemnity and audit rights for royalty calculations.""",
+
+    "None of the above":"""
+      Generate a comprehensive summary of this legal document focusing on:
+
+      1. Document Type and Purpose
+      - Identify the primary purpose and nature of the agreement
+      - Key objectives and intended outcomes
+
+      2. Parties Involved
+      - Identify all parties and their roles
+      - Key relationships and obligations
+
+      3. Key Terms and Conditions
+      - Main rights and obligations of each party
+      - Critical deadlines and timelines
+      - Financial terms and payment obligations
+      - Performance requirements and standards
+
+      4. Risk Allocation
+      - Liability provisions
+      - Indemnification obligations
+      - Insurance requirements
+      - Warranty and representation commitments
+
+      5. Important Clauses
+      - Termination conditions
+      - Default scenarios and remedies
+      - Change or modification provisions
+      - Assignment and transfer rights
+      - Dispute resolution mechanisms
+
+      6. Special Provisions
+      - Any unique or notable terms
+      - Industry-specific requirements
+      - Regulatory compliance obligations
+
+      Present the summary in clear, actionable points that highlight business impact.
+      Use professional language and maintain a logical flow.
+      Include specific references to relevant sections where appropriate.
+   """
 }
 
 # Add a GENERAL_SUMMARY_PROMPT constant
@@ -124,6 +165,22 @@ Present the summary in clear, actionable points that highlight business impact.
 Use professional language and maintain a logical flow.
 Include specific references to relevant sections where appropriate.
 """
+
+GENERAL_LONG_SUMMARY_PROMPT = """
+Provide a detailed analysis covering:
+
+        1. Document Type and Purpose
+        2. Parties and Their Roles
+        3. Key Terms and Conditions
+        4. Financial Obligations
+        5. Performance Requirements
+        6. Important Dates and Deadlines
+        7. Termination Conditions
+        8. Special Provisions
+        9. Next Steps or Required Actions
+
+        Include specific references to sections and clauses where relevant.
+        """
 
 GENERAL_RISK_ANALYSIS_PROMPT = """
 Analyze this legal document for risks considering the following aspects:
@@ -240,7 +297,7 @@ For each risk category:
 """
 
 LONG_SUMMARY_PROMPTS = {
-    "Asset Purchase Agreement": """Conduct a comprehensive legal analysis of this Asset Purchase Agreement with detailed attention to:
+    "Asset Purchase Agreement": """Conduct a comprehensive legal analysis of this document with detailed attention to:
 
 1. Asset Transfer Structure and Mechanics
    - Detailed inventory and classification of assets being transferred
@@ -298,7 +355,7 @@ LONG_SUMMARY_PROMPTS = {
    - Warranty obligations
    - Record retention requirements""",
 
-    "Collaboration Agreement": """Conduct a comprehensive analysis of this Collaboration Agreement addressing:
+    "Collaboration Agreement": """Conduct a comprehensive analysis of this document addressing:
 
 1. Scope and Objectives
    - Detailed project scope definition
@@ -349,7 +406,7 @@ LONG_SUMMARY_PROMPTS = {
    - Wind-down procedures
    - Survival provisions""",
 
-    "Confidentiality Agreement": """Perform a detailed analysis of this Confidentiality Agreement focusing on:
+    "Confidentiality Agreement": """Perform a detailed analysis of this document focusing on:
 
 1. Information Classification and Scope
    - Definition of confidential information
@@ -397,7 +454,7 @@ LONG_SUMMARY_PROMPTS = {
    - Jurisdictional considerations
    - Alternative dispute resolution""",
 
-    "Copyright Assignment Agreement": """Conduct an in-depth analysis of this Copyright Assignment Agreement addressing:
+    "Copyright Assignment Agreement": """Conduct an in-depth analysis of this document addressing:
 
 1. Rights Transfer Scope
    - Works covered
@@ -446,7 +503,7 @@ LONG_SUMMARY_PROMPTS = {
    - Third-party claims
    - Survival periods""",
 
-    "Escrow Agreement": """Analyze this Escrow Agreement with detailed focus on:
+    "Escrow Agreement": """Analyze this document with detailed focus on:
 
 1. Escrow Structure and Mechanics
    - Asset identification
@@ -488,7 +545,7 @@ LONG_SUMMARY_PROMPTS = {
    - Termination rights
    - Successor agent provisions""",
 
-    "Franchise Agreement": """Perform a comprehensive analysis of this Franchise Agreement addressing:
+    "Franchise Agreement": """Perform a comprehensive analysis of this document addressing:
 
 1. Franchise Grant and Territory
    - Territory definition
@@ -537,7 +594,7 @@ LONG_SUMMARY_PROMPTS = {
    - Post-termination obligations
    - De-identification requirements""",
 
-    "Indemnification Agreement": """Conduct a detailed analysis of this Indemnification Agreement focusing on:
+    "Indemnification Agreement": """Conduct a detailed analysis of this document focusing on:
 
 1. Scope of Protection
    - Covered claims
@@ -578,7 +635,7 @@ LONG_SUMMARY_PROMPTS = {
    - Set-off rights
    - Recovery allocation""",
 
-    "Joint Venture Agreement": """Perform an in-depth analysis of this Joint Venture Agreement addressing:
+    "Joint Venture Agreement": """Perform an in-depth analysis of this document addressing:
 
 1. Structure and Formation
    - Legal form and jurisdiction analysis
@@ -634,7 +691,7 @@ LONG_SUMMARY_PROMPTS = {
    - Deadlock resolution
    - Termination triggers""",
 
-    "Lease Agreement": """Analyze this Lease Agreement with detailed focus on:
+    "Lease Agreement": """Analyze this document with detailed focus on:
 
 1. Premises and Use
    - Property description
@@ -684,7 +741,7 @@ LONG_SUMMARY_PROMPTS = {
    - Self-help rights
    - Force majeure""",
 
-    "Loan Agreement": """Conduct a comprehensive analysis of this Loan Agreement with focus on:
+    "Loan Agreement": """Conduct a comprehensive analysis of this document with focus on:
 
 1. Facility Structure
    - Loan type and purpose
@@ -734,7 +791,7 @@ LONG_SUMMARY_PROMPTS = {
    - Third-party verification
    - Confidentiality provisions""",
 
-    "Loan Purchase Agreement": """Conduct a detailed analysis of this Loan Purchase Agreement addressing:
+    "Loan Purchase Agreement": """Conduct a detailed analysis of this document addressing:
 
 1. Portfolio Definition and Scope
    - Loan identification
@@ -776,7 +833,7 @@ LONG_SUMMARY_PROMPTS = {
    - Borrower communication
    - Regulatory compliance""",
 
-    "Investment Agreement": """Analyze this Investment Agreement with focus on:
+    "Investment Agreement": """Analyze this document with focus on:
 
 1. Investment Structure
    - Security type
@@ -818,7 +875,7 @@ LONG_SUMMARY_PROMPTS = {
    - Co-sale rights
    - Put option rights""",
 
-    "Share Purchase Agreement": """Perform a comprehensive analysis of this Share Purchase Agreement addressing:
+    "Share Purchase Agreement": """Perform a comprehensive analysis of this document addressing:
 
 1. Transaction Structure
    - Share identification
@@ -860,7 +917,7 @@ LONG_SUMMARY_PROMPTS = {
    - Tax cooperation
    - Record retention""",
 
-   "Non-Compete Agreement": """Analyze this Non-Compete Agreement with detailed focus on:
+   "Non-Compete Agreement": """Analyze this document with detailed focus on:
 
 1. Restriction Scope and Reasonableness
    - Activity limitations and definitions
@@ -901,7 +958,7 @@ LONG_SUMMARY_PROMPTS = {
    - Assignment provisions
    - Survival terms""",
 
-    "Non-Disclosure Agreement (NDA)": """Conduct a comprehensive analysis of this Non-Disclosure Agreement focusing on:
+    "Non-Disclosure Agreement (NDA)": """Conduct a comprehensive analysis of this document focusing on:
 
 1. Information Protection Framework
    - Confidential information definition
@@ -943,7 +1000,7 @@ LONG_SUMMARY_PROMPTS = {
    - Jurisdictional considerations
    - Alternative dispute resolution""",
 
-    "Partnership Agreement": """Perform an in-depth analysis of this Partnership Agreement addressing:
+    "Partnership Agreement": """Perform an in-depth analysis of this document addressing:
 
 1. Partnership Structure and Formation
    - Entity classification
@@ -985,7 +1042,7 @@ LONG_SUMMARY_PROMPTS = {
    - Valuation methodology
    - Buy-sell provisions""",
 
-    "Pledge Agreement": """Analyze this Pledge Agreement with comprehensive focus on:
+    "Pledge Agreement": """Analyze this document with comprehensive focus on:
 
 1. Collateral Package Analysis
    - Asset description precision
@@ -1027,7 +1084,7 @@ LONG_SUMMARY_PROMPTS = {
    - Documentation requirements
    - Recording obligations""",
 
-    "Real Estate Agreement to Sell": """Conduct a detailed analysis of this Real Estate Agreement to Sell focusing on:
+    "Real Estate Agreement to Sell": """Conduct a detailed analysis of this document focusing on:
 
 1. Property and Rights Analysis
    - Legal description accuracy
@@ -1069,7 +1126,7 @@ LONG_SUMMARY_PROMPTS = {
    - Post-closing obligations
    - Default remedies""",
 
-    "Real Estate Purchase Agreement": """Analyze this Real Estate Purchase Agreement with detailed attention to:
+    "Real Estate Purchase Agreement": """Analyze this document with detailed attention to:
 
 1. Transaction Fundamentals
    - Property identification
@@ -1111,7 +1168,7 @@ LONG_SUMMARY_PROMPTS = {
    - Recording requirements
    - Post-closing obligations""",
 
-    "Shareholders' Agreement": """Perform a comprehensive analysis of this Shareholders' Agreement addressing:
+    "Shareholders' Agreement": """Perform a comprehensive analysis of this document addressing:
 
 1. Governance Structure
    - Board composition rules
@@ -1153,7 +1210,7 @@ LONG_SUMMARY_PROMPTS = {
    - Expert determination
    - Governing law""",
 
-    "Services Agreement": """Analyze this Services Agreement with comprehensive focus on:
+    "Services Agreement": """Analyze this document with comprehensive focus on:
 
 1. Service Scope and Standards
    - Service description detail
@@ -1195,7 +1252,7 @@ LONG_SUMMARY_PROMPTS = {
    - Background IP
    - Improvements rights""",
 
-    "Manufacturing Agreement": """Conduct a detailed analysis of this Manufacturing Agreement focusing on:
+    "Manufacturing Agreement": """Conduct a detailed analysis of this document focusing on:
 
 1. Production Requirements
    - Specifications detail
@@ -1237,7 +1294,7 @@ LONG_SUMMARY_PROMPTS = {
    - Force majeure
    - Termination rights""",
 
-    "Tolling Agreement": """Analyze this Tolling Agreement with detailed attention to:
+    "Tolling Agreement": """Analyze this document with detailed attention to:
 
 1. Processing Framework
    - Service scope
@@ -1279,7 +1336,7 @@ LONG_SUMMARY_PROMPTS = {
    - Indemnification
    - Termination rights""",
 
-    "Slump Sale Agreement": """Perform a comprehensive analysis of this Slump Sale Agreement addressing:
+    "Slump Sale Agreement": """Perform a comprehensive analysis of this document addressing:
 
 1. Business Transfer Scope
    - Asset identification
@@ -1321,7 +1378,7 @@ LONG_SUMMARY_PROMPTS = {
    - Employee claims
    - Third-party consents""",
 
-    "Patent Assignment Agreement": """Analyze this Patent Assignment Agreement with comprehensive focus on:
+    "Patent Assignment Agreement": """Analyze this document with comprehensive focus on:
 
 1. Patent Portfolio Analysis
    - Patent identification
@@ -1363,7 +1420,7 @@ LONG_SUMMARY_PROMPTS = {
    - Patent challenges
    - Enforcement costs""",
 
-    "Technology License Agreement": """Conduct a comprehensive analysis of this Technology License Agreement focusing on:
+    "Technology License Agreement": """Conduct a comprehensive analysis of this document focusing on:
 
 1. License Grant Framework
    - Scope definition
@@ -1403,7 +1460,9 @@ LONG_SUMMARY_PROMPTS = {
    - Acceptance criteria
    - Monitoring rights
    - Reporting obligations
-   - Compliance verification"""
+   - Compliance verification""",
+
+   "None of the above":f"""{GENERAL_LONG_SUMMARY_PROMPT}"""
 }
 
 RISK_ANALYSIS_PROMPTS = {
@@ -1849,16 +1908,32 @@ C. Business & Operational Risks:
    - Examine quality control
    - Analyze capacity commitments"""
 }
-
 # Analysis prompts
 CONFLICT_ANALYSIS_PROMPT = """
 Analyze the following documents for two tasks:
     1. Determine if there is at least one common party present in all documents.
     2. If there is at least one common party, perform a conflict check across all documents.
 
-    For each document, identify any clauses or terms that may conflict with clauses or terms in the other documents.
+   CITATION FORMAT:
+   1. When referencing specific clauses or sections, always include the actual text content within [[double brackets]], not the clause numbers.
+      Example: "The agreement states [[The party shall be liable for all damages]]"
 
-    Provide your analysis in the following format:
+   2. Add the filename after the citation using {{filename}}:
+      Example: "As specified in [[The party shall be liable]]{{Agreement.pdf}}"
+
+   3. For multiple related references, use them separately:
+      - Single reference: [[The Seller shall deliver...]]{{Agreement.pdf}}
+      - Multiple references: [[The Buyer agrees to pay...]]{{Agreement.pdf}} and [[All disputes shall be...]]{{Agreement.pdf}}
+
+   CITATION GUIDELINES:
+   - Always use the exact text as it appears in the document, do not change it or paraphrase it.
+   - Never include formatting characters (**, `, etc.) in citations
+   - Keep citations concise (30-40 characters)
+   - Never combine multiple references within a single bracket
+   - Do not use ellipsis (...), just use the first part of the text
+   - Always include the filename after each citation WITHOUT ANY SPACE/GAP
+
+   Provide your analysis in the following format:
     Common Party Check:
     [Yes/No] - There [is/are] [a common party/no common parties] involved across the selected documents.
 
@@ -1866,16 +1941,15 @@ Analyze the following documents for two tasks:
 
     (IMPORTANT NOTE: If yes, start your response from here)
 
-    Parties Involved: (send this in your response with a special tag like **Parties Involved**)
+    Common Parties Involved: (send this in your response with a special tag like **Common Parties Involved**)
     - [Name of common party 1]
     - [Name of common party 2]
     - ...
 
-
     Conflict Analysis:
     Document: [Filename1](send this in your response with a special tag like **Document Name**)
     Conflicts:
-    1. Clause [X] conflicts with [Filename2], Clause [Y]:
+    1. Clause [[exact text of conflicting clause]] conflicts with [[exact text of conflicting clause]]{{Filename2}}:
        - [Brief explanation of the conflict]
     2. ...
 
@@ -1883,30 +1957,12 @@ Analyze the following documents for two tasks:
     Conflicts:
     1. ...
 
-    If no conflicts are found for a document, state "No conflicts found."
-
-    If there is no common party, only provide the Common Party Check result.
+    If no conflicts are found for a document or no common parties are found, state "No conflicts found."
 
     Focus on significant conflicts that could impact the legal or business relationship between the parties involved.
 
     Documents:
     """
-
-GENERAL_LONG_SUMMARY_PROMPT = """
-Provide a detailed analysis covering:
-
-        1. Document Type and Purpose
-        2. Parties and Their Roles
-        3. Key Terms and Conditions
-        4. Financial Obligations
-        5. Performance Requirements
-        6. Important Dates and Deadlines
-        7. Termination Conditions
-        8. Special Provisions
-        9. Next Steps or Required Actions
-
-        Include specific references to sections and clauses where relevant.
-        """
 
 DRAFT_PROMPT = """
 Based on the provided context, draft a professional legal communication. Choose the appropriate format:
@@ -1954,22 +2010,709 @@ Based on the provided context, draft a professional legal communication. Choose 
         Only provide the draft in your response, do not mention anything else.
         """
 
-ASK_PROMPT = """=
-        You are a legal AI assistant. Analyze the provided documents and chat history to answer questions.
-        
-        The input will be structured as:
-        1. Document contents (marked with [1], [2], etc. present at the start of each document)
-        2. Previous conversation history (if any)
-        3. Current query
-        
-        Guidelines:
-        1. Consider both the documents and chat history for context
-        2. If referring to previous messages, be explicit
-        3. If the query relates to specific documents, cite them using their numbers [1], [2], etc.
-        4. Maintain professional tone
-        5. Ask for clarification if needed
+ASK_PROMPT = '''
+You are a legal AI assistant with expertise in contract analysis and legal document review. Your role is to provide clear, authoritative answers while maintaining accuracy through precise citations.
 
-        Approach each question with authority and practicality, focusing on clear explanations.
+CITATION FORMAT:
+1. When referencing specific clauses or sections, always include the actual text content within [[double brackets]], not the clause numbers.
+   Example: "The agreement states [[The party shall be liable for all damages]]"
 
-        Now address the user's query.
-        """
+2. Add the filename after the citation using {{filename}}:
+   Example: "As specified in [[The party shall be liable]]{{Agreement.pdf}}"
+
+3. For multiple related references, use them separately:
+   - Single reference: [[The Seller shall deliver...]]{{Agreement.pdf}}
+   - Multiple references: [[The Buyer agrees to pay...]]{{Agreement.pdf}} and [[All disputes shall be...]]{{Agreement.pdf}}
+
+CITATION GUIDELINES:
+- Always use the exact text as it appears in the document, do not change it or paraphrase it.
+- Never include formatting characters (**, `, etc.) in citations
+- Keep citations concise (30-40 characters)
+- NEVER combine multiple references within a single bracket like [[amongst: Essilor India Private Limited...and The Persons of the Gupta Family]], use proper formatting and only one exact citation per double bracket.
+- Do not use ellipsis (...), just use the first part of the text
+- Always include the filename after each citation WITHOUT ANY SPACE/GAP
+
+
+EXAMPLE RESPONSE:
+The contract includes **important provisions** about liability [[The party shall be liable]]{{Agreement.pdf}} and termination [[Agreement may be terminated]]{{Agreement.pdf}}.
+
+RESPONSE GUIDELINES:
+1. Begin with a direct answer
+2. Support claims with exact citations
+3. Structure complex responses clearly
+4. Maintain professional tone
+
+Now analyze the provided context and address the query.
+'''
+
+# Document Categories
+# DOCUMENT_CATEGORIES = [
+#     "Commercial Agreements",
+#     "Employment Documents", 
+#     "Corporate Documents",
+#     "Financial Documents",
+#     "Property Documents",
+#     "Intellectual Property Documents",
+#     "Regulatory Documents",
+#     "Legal Proceedings"
+# ]
+
+# Category-based Short Summary Prompts
+# CATEGORY_SHORT_SUMMARY_PROMPTS = {
+#     "Commercial Agreements": """
+# Generate a focused summary of this commercial document addressing:
+
+# 1. Agreement Purpose
+#    - Primary objective and transaction type
+#    - Key deliverables or services
+#    - Scope and limitations
+
+# 2. Key Commercial Terms
+#    - Financial arrangements
+#    - Payment terms and conditions
+#    - Pricing mechanisms
+#    - Performance metrics
+
+# 3. Party Obligations
+#    - Key responsibilities
+#    - Delivery requirements
+#    - Quality standards
+#    - Timeline commitments
+
+# 4. Risk Management
+#    - Liability provisions
+#    - Indemnification terms
+#    - Insurance requirements
+#    - Warranty terms
+
+# 5. Operational Framework
+#    - Implementation requirements
+#    - Reporting obligations
+#    - Governance structure
+#    - Change management
+
+# 6. Term and Termination
+#    - Duration and renewal
+#    - Termination rights
+#    - Exit provisions
+#    - Post-termination obligations
+#     """,
+
+#     "Employment Documents": """
+# Generate a focused summary of this employment document addressing:
+
+# 1. Position Details
+#    - Role and title
+#    - Department/team
+#    - Reporting structure
+#    - Work location
+
+# 2. Employment Terms
+#    - Start date
+#    - Employment type
+#    - Work schedule
+#    - Probation period
+
+# 3. Compensation Package
+#    - Base compensation
+#    - Variable components
+#    - Benefits overview
+#    - Equity/stock options
+
+# 4. Performance & Development
+#    - Key responsibilities
+#    - Performance metrics
+#    - Training provisions
+#    - Career development
+
+# 5. Key Policies
+#    - Confidentiality requirements
+#    - IP ownership
+#    - Non-compete terms
+#    - Code of conduct
+
+# 6. Administrative Details
+#    - Notice periods
+#    - Leave policies
+#    - Expense policies
+#    - Required documentation
+#     """,
+
+#     "Corporate Documents": """
+# Generate a focused summary of this corporate document addressing:
+
+# 1. Document Purpose
+#    - Type of corporate action
+#    - Legal framework
+#    - Key objectives
+#    - Affected stakeholders
+
+# 2. Corporate Structure
+#    - Entity details
+#    - Ownership structure
+#    - Management framework
+#    - Governance mechanisms
+
+# 3. Key Provisions
+#    - Rights and obligations
+#    - Decision-making process
+#    - Voting mechanisms
+#    - Control provisions
+
+# 4. Financial Aspects
+#    - Capital structure
+#    - Financial obligations
+#    - Distribution rights
+#    - Economic terms
+
+# 5. Compliance Framework
+#    - Regulatory requirements
+#    - Reporting obligations
+#    - Audit provisions
+#    - Record-keeping
+
+# 6. Implementation Details
+#    - Effective date
+#    - Required approvals
+#    - Filing requirements
+#    - Next steps
+#     """,
+
+#     "Financial Documents": """
+# Generate a focused summary of this financial document addressing:
+
+# 1. Transaction Overview
+#    - Financial instrument type
+#    - Transaction structure
+#    - Key parties
+#    - Purpose and use of funds
+
+# 2. Financial Terms
+#    - Principal amounts
+#    - Interest/returns
+#    - Payment schedule
+#    - Fee structure
+
+# 3. Security Structure
+#    - Collateral/security
+#    - Guarantees
+#    - Priority ranking
+#    - Enforcement rights
+
+# 4. Conditions Framework
+#    - Precedent conditions
+#    - Covenants
+#    - Representations
+#    - Events of default
+
+# 5. Risk Allocation
+#    - Default remedies
+#    - Indemnification
+#    - Insurance requirements
+#    - Force majeure
+
+# 6. Administrative Terms
+#    - Reporting requirements
+#    - Compliance obligations
+#    - Agent roles
+#    - Amendment provisions
+#     """,
+
+#     "Property Documents": """
+# Generate a focused summary of this property document addressing:
+
+# 1. Property Details
+#    - Asset description
+#    - Location/jurisdiction
+#    - Rights included
+#    - Restrictions/easements
+
+# 2. Transaction Terms
+#    - Deal structure
+#    - Consideration
+#    - Payment terms
+#    - Closing conditions
+
+# 3. Property Rights
+#    - Ownership/usage rights
+#    - Maintenance obligations
+#    - Improvement rights
+#    - Access provisions
+
+# 4. Risk Allocation
+#    - Title warranties
+#    - Property condition
+#    - Environmental matters
+#    - Regulatory compliance
+
+# 5. Operational Terms
+#    - Management rights
+#    - Service provisions
+#    - Utility responsibilities
+#    - Insurance requirements
+
+# 6. Term Structure
+#    - Duration/expiration
+#    - Renewal rights
+#    - Termination provisions
+#    - Post-termination obligations
+#     """,
+
+#     "Intellectual Property Documents": """
+# Generate a focused summary of this IP document addressing:
+
+# 1. IP Scope
+#    - IP type and description
+#    - Protection scope
+#    - Territory coverage
+#    - Duration of rights
+
+# 2. Rights Framework
+#    - Granted rights
+#    - Usage restrictions
+#    - Sublicensing terms
+#    - Improvement rights
+
+# 3. Commercial Terms
+#    - Payment structure
+#    - Royalty calculations
+#    - Reporting requirements
+#    - Audit rights
+
+# 4. Protection Measures
+#    - Confidentiality terms
+#    - Security requirements
+#    - Quality control
+#    - Enforcement rights
+
+# 5. Compliance Framework
+#    - Regulatory requirements
+#    - Registration obligations
+#    - Maintenance duties
+#    - Record-keeping
+
+# 6. Term Structure
+#    - Duration and renewal
+#    - Termination rights
+#    - Post-termination rights
+#    - Survival provisions
+#     """,
+
+#     "Regulatory Documents": """
+# Generate a focused summary of this regulatory document addressing:
+
+# 1. Regulatory Framework
+#    - Governing regulations
+#    - Scope of application
+#    - Compliance requirements
+#    - Regulatory authority
+
+# 2. Obligations
+#    - Primary requirements
+#    - Reporting duties
+#    - Documentation needs
+#    - Timeline commitments
+
+# 3. Compliance Measures
+#    - Required actions
+#    - Prohibited activities
+#    - Monitoring requirements
+#    - Audit provisions
+
+# 4. Risk Management
+#    - Liability exposure
+#    - Penalty provisions
+#    - Remediation requirements
+#    - Appeal rights
+
+# 5. Implementation
+#    - Effective dates
+#    - Transition periods
+#    - Required resources
+#    - Training needs
+
+# 6. Administrative Details
+#    - Record-keeping
+#    - Filing requirements
+#    - Contact information
+#    - Update procedures
+#     """,
+
+#     "Legal Proceedings": """
+# Generate a focused summary of this legal proceeding document addressing:
+
+# 1. Proceeding Overview
+#    - Type of proceeding
+#    - Forum/jurisdiction
+#    - Parties involved
+#    - Key issues
+
+# 2. Claims/Positions
+#    - Main allegations
+#    - Legal basis
+#    - Relief sought
+#    - Defenses raised
+
+# 3. Procedural Aspects
+#    - Timeline/deadlines
+#    - Required filings
+#    - Evidence rules
+#    - Hearing details
+
+# 4. Resolution Framework
+#    - Settlement options
+#    - Decision process
+#    - Appeal rights
+#    - Enforcement mechanisms
+
+# 5. Resource Requirements
+#    - Legal representation
+#    - Expert needs
+#    - Cost implications
+#    - Time commitments
+
+# 6. Next Steps
+#    - Immediate actions
+#    - Key deadlines
+#    - Required responses
+#    - Strategic considerations
+#     """
+# }
+
+# CATEGORY_LONG_SUMMARY_PROMPTS = {
+#     "Commercial Agreements": """Analyze this document with comprehensive focus on:
+
+# 1. Service Scope and Standards
+#    - Service description detail
+#    - Performance standards
+#    - Deliverable specifications
+#    - Quality requirements
+#    - Timeline commitments
+#    - Acceptance criteria
+
+# 2. Commercial Terms
+#    - Fee structure analysis
+#    - Payment terms
+#    - Expense treatment
+#    - Rate adjustment mechanisms
+#    - Invoice requirements
+#    - Late payment consequences
+
+# 3. Performance Management
+#    - KPI framework
+#    - Service levels
+#    - Reporting requirements
+#    - Review procedures
+#    - Remediation process
+#    - Continuous improvement
+
+# 4. Risk Allocation
+#    - Warranties scope
+#    - Indemnification provisions
+#    - Limitation of liability
+#    - Insurance requirements
+#    - Force majeure terms
+#    - Termination rights
+
+# 5. Intellectual Property
+#    - IP ownership
+#    - License grants
+#    - Third-party rights
+#    - Work product rights
+#    - Background IP
+#    - Improvements rights""",
+
+#     "Employment Documents": """Analyze this document with detailed focus on:
+
+# 1. Employment Terms & Conditions
+#    - Position description and duties
+#    - Employment status and classification
+#    - Work location and schedule
+#    - Probationary period terms
+#    - Reporting relationships
+#    - Performance expectations
+
+# 2. Compensation & Benefits
+#    - Base salary structure
+#    - Bonus/commission plans
+#    - Equity compensation
+#    - Benefits package details
+#    - Expense reimbursement
+#    - Salary review process
+
+# 3. Compliance & Policies
+#    - Workplace policies
+#    - Code of conduct
+#    - Confidentiality obligations
+#    - Data protection requirements
+#    - Health and safety
+#    - Regulatory compliance
+
+# 4. Intellectual Property & Restrictions
+#    - IP assignment provisions
+#    - Non-compete terms
+#    - Non-solicitation
+#    - Confidentiality scope
+#    - Work product ownership
+#    - Post-employment restrictions
+
+# 5. Administrative Framework
+#    - Leave entitlements
+#    - Time recording
+#    - Travel requirements
+#    - Training obligations
+#    - Performance review process
+#    - Disciplinary procedures""",
+
+#     "Corporate Documents": """Analyze this document with comprehensive focus on:
+
+# 1. Corporate Structure & Governance
+#    - Entity formation details
+#    - Ownership structure
+#    - Management framework
+#    - Board composition
+#    - Voting rights
+#    - Control mechanisms
+
+# 2. Stakeholder Rights
+#    - Shareholder rights
+#    - Director duties
+#    - Officer responsibilities
+#    - Minority protections
+#    - Information rights
+#    - Participation rights
+
+# 3. Financial Framework
+#    - Capital structure
+#    - Share classes
+#    - Distribution rights
+#    - Investment terms
+#    - Valuation mechanisms
+#    - Exit provisions
+
+# 4. Operational Controls
+#    - Decision-making process
+#    - Reserved matters
+#    - Approval requirements
+#    - Reporting obligations
+#    - Audit rights
+#    - Amendment procedures
+
+# 5. Compliance & Risk
+#    - Regulatory requirements
+#    - Corporate compliance
+#    - Risk management
+#    - Insurance obligations
+#    - Indemnification
+#    - Dispute resolution""",
+
+#     "Financial Documents": """Analyze this document with detailed attention to:
+
+# 1. Transaction Structure
+#    - Facility type
+#    - Amount and currency
+#    - Purpose and use
+#    - Availability period
+#    - Drawdown conditions
+#    - Repayment terms
+
+# 2. Pricing & Payment
+#    - Interest calculation
+#    - Fee structure
+#    - Payment mechanics
+#    - Default interest
+#    - Break costs
+#    - Tax provisions
+
+# 3. Security Package
+#    - Security structure
+#    - Guarantee framework
+#    - Collateral coverage
+#    - Priority arrangements
+#    - Perfection requirements
+#    - Enforcement rights
+
+# 4. Covenants & Conditions
+#    - Financial covenants
+#    - Operational covenants
+#    - Information requirements
+#    - Representations
+#    - Events of default
+#    - Remedies
+
+# 5. Administrative Framework
+#    - Agent roles
+#    - Lender rights
+#    - Transfer provisions
+#    - Majority decisions
+#    - Amendment process
+#    - Notices""",
+
+#     "Property Documents": """Analyze this document with comprehensive focus on:
+
+# 1. Property Details
+#    - Legal description
+#    - Title status
+#    - Permitted use
+#    - Zoning compliance
+#    - Environmental status
+#    - Physical condition
+
+# 2. Transaction Terms
+#    - Purchase price/rent
+#    - Payment structure
+#    - Deposit requirements
+#    - Adjustments
+#    - Tax treatment
+#    - Closing costs
+
+# 3. Rights & Obligations
+#    - Access rights
+#    - Maintenance duties
+#    - Improvement rights
+#    - Service obligations
+#    - Insurance requirements
+#    - Regulatory compliance
+
+# 4. Risk Allocation
+#    - Warranties
+#    - Indemnification
+#    - Environmental liability
+#    - Casualty provisions
+#    - Condemnation
+#    - Force majeure
+
+# 5. Operational Framework
+#    - Management rights
+#    - Service contracts
+#    - Utility responsibilities
+#    - Common areas
+#    - Rules and regulations
+#    - Emergency procedures""",
+
+#     "Intellectual Property Documents": """Analyze this document with detailed focus on:
+
+# 1. IP Rights Framework
+#    - IP description
+#    - Protection scope
+#    - Territory coverage
+#    - Duration
+#    - Registration status
+#    - Maintenance requirements
+
+# 2. Usage Rights
+#    - License scope
+#    - Field of use
+#    - Sublicense rights
+#    - Modification rights
+#    - Distribution rights
+#    - Reservation of rights
+
+# 3. Commercial Terms
+#    - Payment structure
+#    - Royalty calculations
+#    - Minimum payments
+#    - Reporting requirements
+#    - Audit rights
+#    - Tax treatment
+
+# 4. Quality & Control
+#    - Quality standards
+#    - Approval requirements
+#    - Monitoring rights
+#    - Marketing requirements
+#    - Compliance obligations
+#    - Review procedures
+
+# 5. Protection & Enforcement
+#    - Infringement handling
+#    - Defense obligations
+#    - Cooperation requirements
+#    - Confidentiality
+#    - Security measures
+#    - Remedies""",
+
+#     "Regulatory Documents": """Analyze this document with comprehensive attention to:
+
+# 1. Regulatory Framework
+#    - Applicable regulations
+#    - Jurisdiction scope
+#    - Authority requirements
+#    - Compliance standards
+#    - Implementation timeline
+#    - Review process
+
+# 2. Compliance Requirements
+#    - Operational standards
+#    - Reporting obligations
+#    - Documentation needs
+#    - Testing requirements
+#    - Audit procedures
+#    - Record retention
+
+# 3. Risk Management
+#    - Risk assessment
+#    - Control measures
+#    - Monitoring requirements
+#    - Incident reporting
+#    - Remediation procedures
+#    - Emergency response
+
+# 4. Implementation Framework
+#    - Timeline requirements
+#    - Resource allocation
+#    - Training needs
+#    - System requirements
+#    - Testing protocols
+#    - Review procedures
+
+# 5. Administrative Controls
+#    - Responsibility assignment
+#    - Oversight mechanisms
+#    - Reporting structure
+#    - Documentation requirements
+#    - Update procedures
+#    - Communication protocols""",
+
+#     "Legal Proceedings": """Analyze this document with detailed focus on:
+
+# 1. Case Framework
+#    - Proceeding type
+#    - Jurisdiction
+#    - Parties involved
+#    - Claims/defenses
+#    - Relief sought
+#    - Legal basis
+
+# 2. Procedural Requirements
+#    - Filing deadlines
+#    - Service requirements
+#    - Evidence rules
+#    - Discovery scope
+#    - Hearing procedures
+#    - Appeal rights
+
+# 3. Evidence & Arguments
+#    - Key evidence
+#    - Witness requirements
+#    - Expert testimony
+#    - Documentary proof
+#    - Legal precedents
+#    - Counter-arguments
+
+# 4. Resolution Framework
+#    - Settlement options
+#    - Decision process
+#    - Enforcement mechanisms
+#    - Appeal procedures
+#    - Alternative resolution
+#    - Time limitations
+
+# 5. Resource Requirements
+#    - Legal representation
+#    - Expert needs
+#    - Cost estimates
+#    - Time commitments
+#    - Document management
+#    - Support services"""
+# }

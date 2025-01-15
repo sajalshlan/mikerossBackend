@@ -11,11 +11,15 @@ import base64
 import tempfile
 import requests
 import zipfile
+import json
 from pdf2image import convert_from_bytes
 import google.generativeai as genai
 from PIL import Image
 from typing import List, Tuple, Dict, Optional
 import pandas as pd
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import anthropic 
 import time
 from .prompts import (
     DOCUMENT_TYPES,
@@ -27,9 +31,11 @@ from .prompts import (
     CONFLICT_ANALYSIS_PROMPT,
     LONG_SUMMARY_PROMPTS,
     DRAFT_PROMPT,
-    ASK_PROMPT
+    ASK_PROMPT,
 )
-import anthropic  # Add this import at the top
+from pdf2docx import Converter
+from datetime import datetime
+import fitz  # PyMuPDF - much faster for page counting
 
 logger = logging.getLogger(__name__)
 load_dotenv()
@@ -39,10 +45,6 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GOOGLE_VISION_API_KEY = os.getenv("GOOGLE_VISION_API_KEY") 
 
 genai.configure(api_key=GEMINI_API_KEY)
-
-# Add these at the top level with other constants
-
-
 
 class ResourceMonitor:
     def __init__(self):
@@ -56,14 +58,12 @@ class ResourceMonitor:
         if current_time - self._last_logged >= self.log_interval:
             with self.lock:
                 memory_mb = self.process.memory_info().rss / 1024 / 1024
-                logger.info(f"Memory usage at {location}: {memory_mb:.2f} MB")
+                # logger.info(f"Memory usage at {location}: {memory_mb:.2f} MB")
                 self._last_logged = current_time
 
     def force_cleanup(self) -> None:
         with self.lock:
             gc.collect()
-            memory_mb = self.process.memory_info().rss / 1024 / 1024
-            logger.info(f"Memory after cleanup: {memory_mb:.2f} MB")
 
 resource_monitor = ResourceMonitor()
 
@@ -76,9 +76,10 @@ class RAGPipeline:
         self.chunk_size = 8192  # 8KB chunks
 
     def analyze_images(self, images: List[Tuple[str, Tuple[str, bytes, str]]]) -> str:
+        logger.info(f"Image analysis started - Count: {len(images)}")
         texts = []
         try:
-            for _, image_tuple in images[:50]:
+            for _, image_tuple in images:
                 try:
                     _, img_bytes, _ = image_tuple
                     text = self._process_single_image(img_bytes)
@@ -90,9 +91,9 @@ class RAGPipeline:
                     resource_monitor.force_cleanup()
             
             return "\n\n".join(texts)
-        finally:
-            texts.clear()
-            del texts
+        except Exception as e:
+            logger.error(f"Image analysis failed - Error: {str(e)}", exc_info=True)
+            return ""
 
     def _process_single_image(self, img_bytes: bytes) -> Optional[str]:
         try:
@@ -120,7 +121,7 @@ class RAGPipeline:
             response.raise_for_status()
             return response.json()
         except Exception as e:
-            logger.error(f"Vision API error: {e}")
+            logger.error(f"Vision API failed - Error: {str(e)}", exc_info=True)
             raise
         finally:
             del payload
@@ -144,31 +145,88 @@ def ocr_process(file_path: str, rag_pipeline: RAGPipeline) -> str:
     except Exception as e:
         logger.error(f"OCR error: {e}")
         return ""
+
+def process_page_chunk(pdf_data: bytes, page_num: int, rag_pipeline: RAGPipeline) -> str:
+    pages = None
+    try:
+        pages = convert_from_bytes(
+            pdf_data,
+            first_page=page_num,
+            last_page=page_num,
+            single_file=False
+        )
+        if pages:
+            return process_single_page(pages[0], rag_pipeline)
+        return ""
     finally:
-        texts.clear()
-        del texts
+        # Clean up pages
+        if pages:
+            for page in pages:
+                page.close()
+        del pages
         resource_monitor.force_cleanup()
 
 def process_pdf_pages(pdf_path: str, rag_pipeline: RAGPipeline) -> List[str]:
+    logger.info("PDF processing started")
     texts = []
-    with open(pdf_path, 'rb') as file:
-        for page in convert_from_bytes(file.read(), single_file=True):
-            try:
-                text = process_single_page(page, rag_pipeline)
-                texts.append(text)
-            finally:
-                del page
-                resource_monitor.force_cleanup()
-    return texts
-
+    total_start_time = time.time()
+    
+    try:
+        # Load PDF and get page count
+        with open(pdf_path, 'rb') as file:
+            pdf_data = file.read()
+            pdf_document = fitz.open(stream=pdf_data, filetype="pdf")
+            total_pages = len(pdf_document)
+        
+        load_duration = time.time() - total_start_time
+        logger.info(f"PDF loaded - Pages: {total_pages}, Time: {load_duration:.2f}s")
+            
+        # Process pages with ThreadPool
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            future_to_page = {
+                executor.submit(process_page_chunk, pdf_data, page_num, rag_pipeline): page_num 
+                for page_num in range(1, total_pages + 1)
+            }
+            
+            for future in as_completed(future_to_page):
+                page_num = future_to_page[future]
+                try:
+                    text = future.result()
+                    if text:
+                        texts.append((page_num, text))
+                except Exception as e:
+                    logger.error(f"Page processing failed - Page: {page_num}, Error: {str(e)}")
+                finally:
+                    future_to_page.pop(future, None)
+        
+        texts = [text for _, text in sorted(texts)]
+        total_duration = time.time() - total_start_time
+        logger.info(f"PDF processing completed - Pages: {total_pages}, Time: {total_duration:.2f}s")
+        
+        return texts
+    except Exception as e:
+        logger.error(f"PDF processing failed - Error: {str(e)}", exc_info=True)
+        raise
+    finally:
+        if 'pdf_document' in locals():
+            pdf_document.close()
+        resource_monitor.force_cleanup()
 
 def process_single_page(image: Image, rag_pipeline: RAGPipeline) -> str:
+    start_time = time.time()
     img_byte_arr = io.BytesIO()
     try:
         image.save(img_byte_arr, format='JPEG')
         img_bytes = img_byte_arr.getvalue()
         base64_image = base64.b64encode(img_bytes).decode('utf-8')
+        
+        # Log before API call
         result = rag_pipeline.analyze_single_image(base64_image)
+        
+        # Log API response time
+        api_duration = time.time() - start_time
+        logger.info(f"Google Vision API response received in {api_duration:.2f} seconds")
+        
         return result['responses'][0]['textAnnotations'][0]['description']
     finally:
         img_byte_arr.close()
@@ -176,10 +234,10 @@ def process_single_page(image: Image, rag_pipeline: RAGPipeline) -> str:
         del base64_image
 
 def extract_text_from_file(file_path: str, rag_pipeline: RAGPipeline, file_extension: Optional[str] = None) -> str:
-    resource_monitor.log_memory("Starting text extraction")
-    
     if not file_extension:
         _, file_extension = os.path.splitext(file_path)
+    
+    logger.info(f"Text extraction started - Type: {file_extension}")
     
     try:
         if file_extension.lower() in ['.xls', '.xlsx', '.csv']:
@@ -199,6 +257,9 @@ def extract_text_from_file(file_path: str, rag_pipeline: RAGPipeline, file_exten
             return ocr_process(file_path, rag_pipeline)
         
         raise ValueError(f"Unsupported file format: {file_extension}")
+    except Exception as e:
+        logger.error(f"Text extraction failed - Type: {file_extension}, Error: {str(e)}", exc_info=True)
+        raise
     finally:
         resource_monitor.force_cleanup()
 
@@ -208,7 +269,6 @@ def extract_text_from_pdf(file_path: str, rag_pipeline: RAGPipeline) -> str:
             # Try first page to check if it's text-based
             first_page = pdf.pages[0]
             text = first_page.extract_text() or ""
-            
             if len(text) > 100:
                 texts = []
                 for page in pdf.pages:
@@ -238,7 +298,6 @@ def extract_text_from_txt(file_path: str) -> str:
         return ""
 
 def extract_text_from_zip(zip_file_path: str, rag_pipeline: RAGPipeline) -> Dict:
-    resource_monitor.log_memory("Starting ZIP extraction")
     results = {}
     
     with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
@@ -289,22 +348,13 @@ def process_pdf_zip_entry(pdf_path: str, rag_pipeline: RAGPipeline) -> Dict:
         'base64': base64_content
     }
 
-def get_pdf_base64(file_path: str, chunk_size: int = 8192) -> str:
-    base64_chunks = []
+def get_pdf_base64(file_path: str) -> str:
     try:
         with open(file_path, 'rb') as pdf_file:
-            while True:
-                chunk = pdf_file.read(chunk_size)
-                if not chunk:
-                    break
-                base64_chunks.append(base64.b64encode(chunk).decode('utf-8'))
-                del chunk
-        
-        result = ''.join(base64_chunks)
-        return result
-    finally:
-        base64_chunks.clear()
-        del base64_chunks
+            return base64.b64encode(pdf_file.read()).decode('utf-8')
+    except Exception as e:
+        logger.error(f"Error encoding PDF to base64: {e}")
+        raise
 
 def extract_text_from_spreadsheet(file_content: bytes, file_extension: str) -> str:
     excel_file = io.BytesIO(file_content)
@@ -336,12 +386,12 @@ def classify_document(text: str) -> str:
     {}
     
     Respond ONLY with the exact category name from the list above. If the document doesn't match any category exactly, 
-    choose the closest match. Provide ONLY the category name, no other text or explanation.
+    choose the "None of the above" category present at the end of the list. Provide ONLY the category name, no other text or explanation.
     """.format("\n".join(DOCUMENT_TYPES))
-    
     try:
-        result = claude_call(text, classification_prompt)
+        result = claude_call_haiku(text, classification_prompt)
         classified_type = result.strip()
+        # print(f"classified_type: {classified_type}")
         if classified_type in DOCUMENT_TYPES:
             return classified_type
         # If response doesn't match exactly, return None to trigger general prompt
@@ -351,8 +401,39 @@ def classify_document(text: str) -> str:
         logger.error(f"Error in document classification: {e}")
         return None
 
+# def classify_document_new(text: str) -> str:
+#     classification_prompt = """
+#     You are a legal document classifier. Based on the document provided, classify it into ONE of the following categories:
+    
+#     {}
+    
+#     Consider the document's primary purpose, structure, and content. Respond ONLY with the exact category name from the list above. 
+#     Provide ONLY the category name, no other text or explanation.
+#     """.format("\n".join(DOCUMENT_CATEGORIES))
+
+#     try:
+#         result = claude_call(text, classification_prompt)
+#         classified_type = result.strip()
+#         if classified_type in DOCUMENT_CATEGORIES:
+#             print(f"classified_type: {classified_type}")
+#             return classified_type
+#         logger.warning(f"Invalid classification result: {classified_type}")
+#         return None
+#     except Exception as e:
+#         logger.error(f"Error in document classification: {e}")
+#         return None
+
 def perform_analysis(analysis_type: str, text: str, custom_prompt: str = None, use_gemini: bool = True, document_type: str = None) -> str:
     logger.info(f"Performing analysis: {analysis_type}")
+    
+    if analysis_type == 'explain':
+        prompt = text 
+        logger.info("Using explanation prompt")
+    
+    elif analysis_type == 'shortSummary':
+        # First classify the document
+        doc_type = classify_document(text[:1000])
+
     print(f"[Analysis] 🔍 Custom prompt provided: {bool(custom_prompt)}")
     print(f"[Analysis] 📄 Document type provided: {document_type}")
     
@@ -403,16 +484,24 @@ def perform_analysis(analysis_type: str, text: str, custom_prompt: str = None, u
                 risk_content = GENERAL_RISK_ANALYSIS_PROMPT
             
             prompt = f"""
-            You are a General Counsel of a Fortune 500 company with over 20 years of experience. 
             First, thoroughly analyze this {doc_type} for all potential risks using the following framework:
-            Structure your response in the following specific format:
 
-            OUTPUT STRUCTURE:
-            1. First, identify all parties silently (do not list them in the output)
-            2. For each party, present the risks they are exposed to using this format.
-            3. For each risk, provide a detailed analysis of the impact on the party's interests.
-            4. Keep each party's analysis separate, independent and distinct from the other parties'.
-            5. Give fresh numbers to each party's analysis while formatting.
+            IMPORTANT REFERENCE RULES:
+            1. When referencing specific clauses or sections, always include the actual text content (first 50-70 characters) within [[double brackets]], not the clause numbers.
+            2. Add the filename after each citation using {{{{filename}}}}:
+            - Single reference: [[The Seller shall deliver...]]{{{{Agreement.pdf}}}}
+            - Multiple references: [[The Buyer agrees to pay...]]{{{{Agreement.pdf}}}} [1] [[All disputes shall be...]]{{{{Agreement.pdf}}}} [2] [[This agreement shall be...]]{{{{Agreement.pdf}}}} [3]
+            3. Never combine multiple references within a single bracket.
+            4. Always use the exact text as it appears in the document to ensure searchability - do not paraphrase or summarize.
+            5. Do not reference clause numbers (like "Clause 6.3") - instead use the actual text content from that clause.
+            6. Always include the filename after each citation in DOUBLE curly braces.
+            7. Place citations at the end of each analysis point, not at the beginning.
+
+            Risk Exposure additional formatting rules:
+            Title/Risk Point: Clear description of the specific risk and its implications. Supporting citation: [[exact text from document]]{{{{filename}}}}
+
+
+            Structure your response in the following specific format:
 
             *****[PARTY NAME]*****
             PERSPECTIVE: Brief overview of this party's position and key objectives in the agreement
@@ -421,25 +510,19 @@ def perform_analysis(analysis_type: str, text: str, custom_prompt: str = None, u
             
             {risk_content}
 
-
             [Repeat for each party]
 
             IMPORTANT FORMATTING RULES:
             - Use ***** only for party names
             - For section headers, use **
-            - Replace the A, B, C with the **
-            - Include specific clause references in [square brackets]
+            - Include exact quotes using the format specified above with filenames
+            - Keep citations concise (30-40 characters)
+            - Never include formatting characters in citations
+            - Do not use ellipsis (...), just use the first part of the text
             - Maintain professional, clear language
+            - Always place citations at the end of the analysis point
             """
-
-            try:
-                result = gemini_call(text, prompt)
-                logger.info("Risk analysis completed successfully")
-                return result
-            except Exception as e:
-                logger.exception("Error in risk analysis")
-                raise
-        
+    
         elif analysis_type == 'ask':
             prompt = ASK_PROMPT
         
@@ -448,21 +531,19 @@ def perform_analysis(analysis_type: str, text: str, custom_prompt: str = None, u
         else:
             logger.error(f"Invalid analysis type: {analysis_type}")
             raise ValueError(f"Invalid analysis type: {analysis_type}")
-        
-        logger.info(f"Using default prompt for {analysis_type}")
 
-    print(f"\n[Analysis] 🚀 Final prompt being sent to Gemini (first 100 chars): {prompt[:100]}...")
-
+    # logger.info(f"Using prompt: {prompt}")
 
     try:
-        if use_gemini:
+        if analysis_type == 'explain':
+            result = claude_call(text, prompt)
+        elif use_gemini:
             result = gemini_call(text, prompt)
         else:
             result = claude_call(text, prompt)
         return result
     except Exception as e:
-        print(f"[Analysis] ❌ Error calling API: {str(e)}")
-        logger.exception("Error calling API")
+        logger.exception(f"Error calling API for {analysis_type}")
         raise
     
 def has_common_party(texts):
@@ -483,83 +564,202 @@ def has_common_party(texts):
 
     try:
         result = gemini_call("", prompt)
-        logger.info(f"Gemini API response for common party check: {result}")
+        # logger.info(f"Gemini API response for common party check: {result}")
         return result.strip().lower() == 'yes'
     except Exception as e:
         logger.exception("Error checking for common party")
         return False
     
+def gemini_call_flash(text, prompt):
+    logger.info("Calling Gemini Flash API")
+    
+    system_prompt = """You are a highly experienced analyst who is great at analyzing documents and providing insights."""
+    
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    response = model.generate_content(
+        [system_prompt, text, prompt],
+        generation_config=genai.types.GenerationConfig(
+            temperature=0.1,
+            max_output_tokens=4000,
+            top_p=0.8,
+            top_k=40
+        )
+    )
+    return response.text
+
 def gemini_call(text, prompt):
     print("[Analysis] ⏳ Calling Gemini API...")
     
-    system_prompt = """
-    You are an advanced legal AI assistant, trained to assist with corporate, commercial, and compliance law. You specialize in analyzing, summarizing, and identifying risks, opportunities, and compliance issues across legal documents. 
-
-    Your expertise includes:
-    • Corporate law
-    • Contract analysis and negotiation
-    • Legal risk assessment
-    • Cross-document compliance and clause standardization
-
-    You provide clear, concise, and actionable insights tailored for lawyers, General Counsels, and corporate decision-makers. You operate with precision, ensuring accuracy, confidentiality, and efficiency in every task.
-    """
+    system_prompt = """You are a highly experienced legal assistant to the General Counsel of a Fortune 500 company."""
 
     try:
-        model = genai.GenerativeModel('gemini-1.5-pro')
-        response = model.generate_content(
-            [system_prompt, text, prompt],
-            generation_config=genai.types.GenerationConfig(
+        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        if(text == ""):
+            response = model.generate_content(
+                [system_prompt, prompt],
+                generation_config=genai.types.GenerationConfig(
                 temperature=0.1,  # Slightly increased for more natural language while maintaining precision
                 max_output_tokens=4000,  # Increased token limit for more comprehensive responses
                 top_p=0.8,  # Added for better response quality
                 top_k=40,  # Added for better response diversity while maintaining relevance
+                )
             )
-        )
-        logger.info("Gemini API call successful")
+        else:
+            response = model.generate_content(
+                [system_prompt, text, prompt],
+                generation_config=genai.types.GenerationConfig(
+                temperature=0.1,  # Slightly increased for more natural language while maintaining precision
+                max_output_tokens=4000,  # Increased token limit for more comprehensive responses
+                top_p=0.8,  # Added for better response quality
+                top_k=40,  # Added for better response diversity while maintaining relevance
+                )
+            )
+        token_counts = {
+            'prompt': response.usage_metadata.prompt_token_count,
+            'output': response.usage_metadata.candidates_token_count,
+            'total': response.usage_metadata.total_token_count
+        }
+        logger.info(f"Gemini API completed - Tokens: {token_counts}")
         return response.text
     except Exception as e:
         logger.error(f"Error calling Gemini API: {str(e)}")
         raise Exception(f"An error occurred while calling Gemini API: {e}")
 
 def claude_call(text, prompt):
-    print("[Analysis] ⏳ Calling Claude API...")
+    logger.info("Calling Claude SONNET API")
+    
+    system_prompt = """You are a highly experienced General Counsel of a Fortune 500 company with over 20 years of experience in corporate law."""
     
     try:
-        headers = {
-            "Content-Type": "application/json",
-            "x-api-key": CLAUDE_API_KEY,
-            "anthropic-version": "2023-06-01"
-        }
-        
-        payload = {
-            "model": "claude-3-5-sonnet-20241022",
-            "max_tokens": 3000,
-            "temperature": 0,
-            "messages": [
-                {"role": "user", "content": f"{text}\n\n{prompt}"}
+        client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+        response = client.messages.create(
+            model="claude-3-5-sonnet-latest",
+            max_tokens=4000,
+            temperature=0.1,
+            system=system_prompt,
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"{prompt}\n\nDocument:\n{text}"
+                }
             ]
-        }
-        
-        response = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers=headers,
-            json=payload
         )
-        response.raise_for_status()
-        
-        logger.info("Claude API call successful")
-        return response.json()["content"][0]["text"]
+        logger.info(f"Claude Sonnet API completed - Tokens: {response.usage}")
+        return response.content[0].text
     except Exception as e:
-        logger.error(f"Error calling Claude API: {str(e)}")
-        raise Exception(f"An error occurred while calling Claude API: {e}")
+        logger.error(f"Claude Sonnet API failed - Error: {str(e)}", exc_info=True)
+        raise
+    
+def claude_call_haiku(text, prompt):
+    logger.info("Calling Claude HAIKU API")
+    
+    system_prompt = """You are a highly experienced analyst who is great at analyzing documents and providing insights."""
+    try:
+        client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+        response = client.messages.create(
+            model="claude-3-5-haiku-latest",
+            max_tokens=4000,
+            temperature=0.1,
+            system=system_prompt,
+            messages=[{
+                "role": "user",
+                "content": f"{prompt}\n\nDocument:\n{text}"
+            }]
+        )
 
+        logger.info(f"Claude HAIKU API completed - Tokens: {response.usage}")
+        return response.content[0].text
+    except Exception as e:
+        logger.error(f"Error calling Claude HAIKU API: {str(e)}")
+        raise Exception(f"An error occurred while calling Claude HAIKU API: {e}")
+
+def claude_call_cache(text, prompt):
+    logger.info("Calling Claude SONNET API with prompt caching")
+    
+    system_prompt = """You are a highly experienced analyst who is great at analyzing documents and providing insights."""
+    try:
+        client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+        response = client.beta.prompt_caching.messages.create(
+            model="claude-3-5-sonnet-latest",
+            max_tokens=4000,
+            temperature=0.1,
+            system=[
+                {
+                    "type": "text",
+                    "text": system_prompt
+                },
+                {
+                    "type": "text", 
+                    "text": text,
+                    "cache_control": {"type": "ephemeral"}
+                }
+            ],
+            messages=[{
+                "role": "user",
+                "content": prompt
+            }]
+        )
+        logger.info(f"Claude Sonnet Cache API completed - Tokens: {response.usage}") 
+        return response.content[0].text
+    except Exception as e:
+        logger.error(f"Error calling Claude Sonnet Cache API: {str(e)}")
+        raise Exception(f"An error occurred while calling Claude Sonnet Cache API: {e}")
+
+def claude_call_explanation(prompt):
+    logger.info("Calling Claude SONNET API")
+
+    system_prompt = """You are a highly experienced General Counsel of a Fortune 500 company with over 20 years of experience in corporate law."""
+    
+    try:
+        client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+        response = client.messages.create(
+            model="claude-3-5-sonnet-latest",
+            max_tokens=1000,
+            temperature=0.9,
+            system=system_prompt,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        )
+        logger.info("Claude Explanation API call successful")
+        return response.content[0].text
+    except Exception as e:
+        logger.error(f"Error calling Claude Explanation API: {str(e)}")
+        raise Exception(f"An error occurred while calling Claude Explanation API: {e}")
+    
+def claude_call_opus(text, prompt):
+    logger.info("Calling Claude OPUS API")
+    
+    try:
+        client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+        response = client.messages.create(
+            model="claude-3-opus-latest",
+            max_tokens=4000,
+            temperature=0.1,
+            system="You are a highly experienced General Counsel of a Fortune 500 company with over 20 years of experience in corporate law.",
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"{prompt}\n\nDocument:\n{text}"
+                }
+            ]
+        )
+        logger.info(f"Claude OPUS API call successful - Tokens: {response.usage}")
+        return response.content[0].text
+    except Exception as e:
+        logger.error(f"Error calling Claude OPUS API: {str(e)}")
+        raise Exception(f"An error occurred while calling Claude OPUS API: {e}")
+    
 def analyze_conflicts_and_common_parties(texts: Dict[str, str]) -> str:
-    logger.info("Analyzing conflicts and common parties")
+    # logger.info("Analyzing conflicts and common parties")
     
     prompt = CONFLICT_ANALYSIS_PROMPT
 
     for filename, content in texts.items():
-        prompt += f"\n\nFilename: {filename}\nContent (truncated):\n{content}"
+        prompt += f"\n\nFilename: {filename}\nContent:\n{content}"
 
     try:
         result = gemini_call("", prompt)
@@ -568,6 +768,337 @@ def analyze_conflicts_and_common_parties(texts: Dict[str, str]) -> str:
     except Exception as e:
         logger.exception("Error analyzing conflicts and common parties")
         raise Exception(f"An error occurred while analyzing conflicts and common parties: {e}")
+
+def analyze_document_clauses(text: str, party_info: dict = None) -> dict:
+    """
+    Analyzes document clauses from a specific party's perspective
+    """
+    if party_info:
+        party_name = party_info.get('name', '')
+        party_role = party_info.get('role', '')
+        # print(f"party name: {party_name}")
+        prompt = f"""
+        Analyze the following legal document from the perspective of {party_name} 
+        (acting as {party_role}) and categorize its clauses into three categories:
+        
+        1. Acceptable Clauses: Terms that are favorable or standard for {party_name}
+        2. Risky Clauses: Terms that pose potential risks or need negotiation for {party_name}
+        3. Missing Clauses: Important clauses that should be present to protect {party_name}'s interests
+        
+        Consider the specific role and interests of {party_name} as {party_role} 
+        when analyzing each clause.
+        
+        For each clause identified, provide:
+        - Category
+        - Clause title/type
+        - Relevant text excerpt
+        - Explanation of categorization from {party_name}'s perspective
+        
+        Format the response as a JSON structure and only return the JSON:
+        {{
+            "acceptable": [
+                {{
+                    "title": "clause title",
+                    "text": "complete clause text exactly as it appears in the document",
+                    "explanation": "why acceptable for {party_name}",
+                }}
+            ],
+            "risky": [...],
+            "missing": [...]
+        }}
+        Only return the JSON, no other text.
+        """
+    else:
+        # Your existing prompt for general analysis
+        prompt = """
+        Analyze the following legal document and categorize its clauses into three categories:
+        1. Acceptable Clauses: Standard terms that follow industry best practices
+        2. Risky Clauses: Terms that need attention or negotiation
+        3. Missing Clauses: Important clauses that should be present but are not
+        
+        For each clause identified, provide:
+        - Category
+        - Clause title/type
+        - Relevant text excerpt
+        - Proper explanation of categorization
+        
+        Format the response as a JSON structure:
+        {{
+            "acceptable": [
+                {{
+                    "title": "clause title",
+                    "text": "complete clause text exactly as it appears in the document",
+                    "explanation": "why acceptable",
+                }}
+            ],
+            "risky": [...],
+            "missing": [...]
+        }}
+        """
+    
+    try:
+        result = claude_call(text, prompt)
+        # print(f"result: {result}")
+        return result
+    except Exception as e:
+        logger.error(f"Error in clause analysis: {str(e)}")
+        raise
+
+def analyze_document_parties(text: str) -> list:
+    """
+    Analyzes document content to extract parties involved.
+    Returns a list of party names and their roles.
+    """
+    prompt = """
+    Analyze the following legal document and identify all parties involved.
+    For each party, provide:
+    1. Party name
+    2. Role in the document (e.g., Buyer, Seller, Lender, Borrower, etc.)
+    
+    Return the results in this JSON format:
+    {
+        "parties": [
+            {
+                "name": "party name",
+                "role": "party role"
+            }
+        ]
+    }
+
+    just the parties and roles, no other text
+    """
+    
+    try:
+        result = claude_call_haiku(text, prompt)
+        # print(f"result of party analysis: {result}")
+        return result
+    except Exception as e:
+        logger.error(f"Error in party analysis: {str(e)}")
+        raise
+
+def check_common_parties(parties_by_file):
+    """
+    Check if there are common parties between documents using Gemini Flash.
+    Returns both whether there are common parties and the list of common parties.
+    """
+    prompt = """
+    Analyze the following parties from different documents and identify any common parties.
+    
+    Document Parties:
+    """
+    
+    # Format the parties data for the prompt
+    for filename, parties in parties_by_file.items():
+        prompt += f"\n\n{filename}:\n"
+        for party in parties:
+            prompt += f"- {party['name']} ({party['role']})\n"
+    
+    prompt += """
+    
+    Provide your response in the following JSON format:
+    {
+        "has_common_parties": "Yes/No",
+        "common_parties": [
+            {
+                "name": "party name",
+                "roles": [
+                    {"role": "role1", "filename": "doc1.pdf"},
+                    {"role": "role2", "filename": "doc2.pdf"}
+                ]
+            }
+        ]
+    }
+    
+    Only return the JSON, no other text.
+    """
+    
+    try:
+        result = claude_call_haiku("", prompt)
+        parsed_result = json.loads(result)
+        return {
+            'has_common_parties': parsed_result['has_common_parties'].lower() == 'yes',
+            'common_parties': parsed_result['common_parties']
+        }
+    except Exception as e:
+        logger.error(f"Error checking common parties: {e}")
+        return {
+            'has_common_parties': False,
+            'common_parties': []
+        }
+
+def analyze_conflicts(text, common_parties):
+    """
+    Analyzes potential conflicts of interest for each common party.
+    """
+    analyses = {}
+    
+    for party in common_parties:
+        prompt = f"""
+        As a legal expert, analyze the potential conflicts of interest and compliance risks for the following party 
+        based on their different roles across multiple documents:
+        
+        Party: {party['name']}
+        Roles across documents:
+        """
+        
+        # Add this party's roles to the prompt
+        for role_info in party['roles']:
+            prompt += f"- {role_info['role']} in {role_info['filename']}\n"
+            
+        prompt += """
+        CITATION REQUIREMENTS:
+        1. When referencing document text:
+           - Include exact text in [[double brackets]]
+           - Add filename after citation in {{curly braces}}
+           - Example: [[The party shall be liable]]{{contract1.pdf}}
+        
+        2. Citation Guidelines:
+           - Use exact text as it appears, no paraphrasing
+           - Keep citations concise (30-40 characters)
+           - Never combine multiple references in one bracket
+           - Include filename immediately after each citation
+           - Do not use ellipsis, use first part of relevant text
+           - No formatting characters in citations
+        
+        Additional formatting rules for every party:
+        Title/Risk Point: Clear description of the specific conflict/breach and its implications. Supporting citation: [[exact text from document]]{{{{filename}}}}
+        Never use citation as your analysis, use it as a reference to the specific clause in the document at the end to support your analysis and not as a replacement to analysis content.
+Provide your analysis in this structure:
+        For the party, ANALYZE ACROSS ALL PROVIDED DOCUMENTS in which party is involved:
+
+        1. OBLIGATION MAPPING:
+        - Extract all binding commitments of [TARGET PARTY]:
+            * Non-compete restrictions (scope, territory, duration)
+            * Confidentiality obligations
+            * Exclusivity commitments 
+            * Performance requirements
+            * Use/disclosure limitations
+            * Service/delivery obligations
+
+        2. CONFLICT IDENTIFICATION:
+        - Cross-reference obligations to identify:
+            * Direct conflicts between commitments
+            * Indirect/implied conflicts through performance
+            * Timing overlaps creating impossibility
+            * Geographic/territorial conflicts
+            * Industry/sector conflicts
+        - For each conflict:
+            * Cite specific clauses in conflict
+            * Explain precise nature of incompatibility
+            * Identify triggering scenarios/actions
+            * Note which agreement was executed first
+            * Provide whole analysis, do not replace citations for analysis
+
+        3. BREACH ANALYSIS:
+        - For each identified conflict:
+            * What specific actions would trigger breach
+            * Which agreement would be breached first
+            * Domino effect on other obligations
+            * Available cure periods
+            * Cross-default implications
+            * Materiality assessment
+            * Provide whole analysis, do not replace citations for analysis
+        - Document:
+            * Relevant notice requirements
+            * Grace periods
+            * Cure rights
+            * Force majeure applicability
+        
+        IMPORTANT:
+        
+        - Give paragraphs in analysis rather that points, provide a rich quality thorough analysis
+        - Always place citations at the end of the analysis point
+        
+        Documents to analyze:
+        """
+        
+        try:
+            party_analysis = claude_call_cache(text, prompt)
+            analyses[party['name']] = party_analysis
+            # Analyze each party individually
+            # print('*' * 100)
+            party_analysis = claude_call_cache(text, prompt)
+            # print('*' * 100)
+            
+            # Add to analyses dictionary with party name as key
+        except Exception as e:
+            logger.error(f"Error analyzing conflicts for party {party['name']}: {str(e)}")
+            analyses[party['name']] = f"Error in analysis: {str(e)}"
+    
+    return analyses
+
+def is_scanned_pdf(pdf_path: str) -> bool:
+    """
+    Checks if a PDF is scanned by attempting to extract text from the first page.
+    Returns True if it's likely a scanned document (little to no extractable text).
+    """
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            first_page = pdf.pages[0]
+            text = first_page.extract_text() or ""
+            # If there's very little text on the first page, it's likely scanned
+            return len(text.strip()) < 100
+    except Exception as e:
+        logger.error(f"Error checking if PDF is scanned: {e}")
+        return True  # Assume scanned if there's an error
+
+def convert_pdf_to_docx(pdf_file_path):
+    """
+    Converts PDF to DOCX and returns the content as base64
+    """
+    # First check if it's a scanned PDF
+    if is_scanned_pdf(pdf_file_path):
+        try:
+            # Return the original PDF content as base64
+            with open(pdf_file_path, 'rb') as pdf_file:
+                base64_content = base64.b64encode(pdf_file.read()).decode('utf-8')
+                return {
+                    'success': True,
+                    'content': base64_content,
+                    'mime_type': 'application/pdf',
+                    'is_scanned': True
+                }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+    # Continue with normal conversion for text-based PDFs
+    cv = None
+    temp_docx = None
+    try:
+        temp_docx = tempfile.NamedTemporaryFile(suffix='.docx', delete=False)
+        # Convert PDF to DOCX
+        cv = Converter(pdf_file_path)
+        cv.convert(temp_docx.name)
+        
+        # Read the converted file
+        with open(temp_docx.name, 'rb') as docx_file:
+            docx_content = docx_file.read()
+            
+        # Convert to base64
+        base64_content = base64.b64encode(docx_content).decode('utf-8')
+        
+        return {
+            'success': True,
+            'content': base64_content,
+            'mime_type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e)
+        }
+    finally:
+        # Cleanup converter
+        if cv:
+            cv.close()
+        # Cleanup temporary file
+        if temp_docx:
+            temp_docx.close()
+            if os.path.exists(temp_docx.name):
+                os.remove(temp_docx.name)
 
 
 

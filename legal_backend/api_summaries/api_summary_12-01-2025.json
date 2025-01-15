@@ -1,0 +1,150 @@
+{
+  "date": "12/01/25",
+  "total_api_calls": 3,
+  "organizations": {
+    "No Organization": {
+      "total_calls": 3,
+      "users": {
+        "sajal": {
+          "total_calls": 3,
+          "status_codes": {
+            "200": 3
+          },
+          "endpoints": {
+            "http://localhost:8000/api/upload_file/": 1,
+            "http://localhost:8000/api/perform_analysis/": 1,
+            "http://localhost:8000/api/explain_text/": 1
+          },
+          "avg_execution_time": 28.651746666666668
+        }
+      }
+    }
+  },
+  "status_code_distribution": {
+    "200": 3
+  },
+  "average_execution_time": 28.651746666666668,
+  "peak_hour": "20:00 IST (2 calls)",
+  "hourly_distribution": {
+    "20": 2,
+    "21": 1
+  },
+  "endpoint_distribution": {
+    "upload_file/": {
+      "count": 1,
+      "avg_time": "0.2842s",
+      "max_time": "0.2842s",
+      "min_time": "0.2842s",
+      "median_time": "0.2842s",
+      "percentage": "33.3%",
+      "organizations": {
+        "No Organization": {
+          "count": 1,
+          "avg_time": "0.2842s",
+          "max_time": "0.2842s",
+          "min_time": "0.2842s",
+          "median_time": "0.2842s",
+          "percentage": "100.0%",
+          "users": {
+            "sajal": {
+              "count": 1,
+              "avg_time": "0.2842s",
+              "max_time": "0.2842s",
+              "min_time": "0.2842s",
+              "median_time": "0.2842s",
+              "percentage": "100.0%"
+            }
+          }
+        }
+      }
+    },
+    "perform_analysis/": {
+      "count": 1,
+      "avg_time": "81.3175s",
+      "max_time": "81.3175s",
+      "min_time": "81.3175s",
+      "median_time": "81.3175s",
+      "percentage": "33.3%",
+      "organizations": {
+        "No Organization": {
+          "count": 1,
+          "avg_time": "81.3175s",
+          "max_time": "81.3175s",
+          "min_time": "81.3175s",
+          "median_time": "81.3175s",
+          "percentage": "100.0%",
+          "users": {
+            "sajal": {
+              "count": 1,
+              "avg_time": "81.3175s",
+              "max_time": "81.3175s",
+              "min_time": "81.3175s",
+              "median_time": "81.3175s",
+              "percentage": "100.0%"
+            }
+          }
+        }
+      }
+    },
+    "explain_text/": {
+      "count": 1,
+      "avg_time": "4.3535s",
+      "max_time": "4.3535s",
+      "min_time": "4.3535s",
+      "median_time": "4.3535s",
+      "percentage": "33.3%",
+      "organizations": {
+        "No Organization": {
+          "count": 1,
+          "avg_time": "4.3535s",
+          "max_time": "4.3535s",
+          "min_time": "4.3535s",
+          "median_time": "4.3535s",
+          "percentage": "100.0%",
+          "users": {
+            "sajal": {
+              "count": 1,
+              "avg_time": "4.3535s",
+              "max_time": "4.3535s",
+              "min_time": "4.3535s",
+              "median_time": "4.3535s",
+              "percentage": "100.0%"
+            }
+          }
+        }
+      }
+    }
+  },
+  "logs": [
+    {
+      "id": 1342,
+      "endpoint": "http://localhost:8000/api/upload_file/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "0.28416s",
+      "timestamp": "12/01/25 20:51:09",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1343,
+      "endpoint": "http://localhost:8000/api/perform_analysis/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "81.31754s",
+      "timestamp": "12/01/25 20:52:32",
+      "organization": "No Organization",
+      "user": "sajal"
+    },
+    {
+      "id": 1344,
+      "endpoint": "http://localhost:8000/api/explain_text/",
+      "method": "POST",
+      "status_code": 200,
+      "execution_time": "4.35354s",
+      "timestamp": "12/01/25 21:00:19",
+      "organization": "No Organization",
+      "user": "sajal"
+    }
+  ]
+}

@@ -14,6 +14,8 @@ from pathlib import Path
 import os
 from datetime import timedelta
 from dotenv import load_dotenv
+import sentry_sdk
+
 
 load_dotenv()
 
@@ -28,12 +30,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-+pbh^dl*(g9(^#y9j-tky*!)h_l7^4p452qtlojee)=fqr3d#1'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 GOOGLE_VISION_API_KEY = os.getenv('GOOGLE_VISION_API_KEY')
 
-CORS_ALLOW_ALL_ORIGINS = False  
+CORS_ALLOW_ALL_ORIGINS = True
 
 ALLOWED_HOSTS = ['*']
+CORS_ALLOW_CREDENTIALS = True  # Important for Office add-ins
 
 CORS_ALLOW_METHODS = [
    'DELETE',
@@ -67,12 +70,15 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    "django_extensions",
     'rest_framework',
     'corsheaders',
     'api',
+    'drf_api_logger'
 ]
 
 MIDDLEWARE = [
+    'api.middleware.DatabaseConnectionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -81,6 +87,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'api.middleware.APILoggerMiddlewareCustom',
+    'drf_api_logger.middleware.api_logger_middleware.APILoggerMiddleware',
 ]
 
 ROOT_URLCONF = 'legal_backend.urls'
@@ -122,11 +130,17 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'legal_db',
-        'USER': 'root',
-        'PASSWORD': 'root@techsdp',
-        'HOST': 'localhost',
-        'PORT': '3306',
+        'NAME': os.getenv('DB_NAME', 'legal_db'),
+        'USER': os.getenv('DB_USER', 'root'),
+        'PASSWORD': os.getenv('DB_PASSWORD', ''),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '3306'),
+        'CONN_MAX_AGE': 0,
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'charset': 'utf8mb4',
+            'connect_timeout': 10,
+        },
     }
 }
 
@@ -182,39 +196,43 @@ import os
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {message}',
-            'style': '{',
+    "formatters": {
+    "app": {
+        "format": (
+            u"%(asctime)s [%(levelname)-8s] "
+            "(%(module)s.%(funcName)s) %(message)s"
+        ),
+        "datefmt": "%Y-%m-%d %H:%M:%S",
         },
     },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
+            'formatter': 'app',
         },
         'file': {
             'class': 'logging.FileHandler',
             'filename': 'debug.log',
-            'formatter': 'verbose',
+            'formatter': 'app',
         },
     },
     'loggers': {
         'django': {
             'handlers': ['console', 'file'],
             'level': 'INFO',
+            'propagate': False,
         },
         'api': {
             'handlers': ['console', 'file'],
-            'level': 'DEBUG',
-            'propagate': True,
+            'level': 'INFO',
+            'propagate': False,
         },
     },
 }
 
 # JWT settings
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=30),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=2),
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': True,
@@ -225,3 +243,17 @@ AUTH_USER_MODEL = 'api.User'
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
+
+# Basic configuration
+DRF_API_LOGGER_DATABASE = True  # Log to database
+DRF_API_LOGGER_SIGNAL = False  # Log using signals (alternative to database)
+DRF_API_LOGGER_EXCLUDE_PATHS = ['/admin/', '/static/']  # Paths to exclude from logging
+DRF_API_LOGGER_PATH_TYPE = 'ABSOLUTE'  # ABSOLUTE or RELATIVE path
+
+sentry_sdk.init(
+    dsn="https://b1e9c1c0da403d309330e0895a46649d@o4508626804932608.ingest.de.sentry.io/4508626807095376",
+    traces_sample_rate=1.0,
+    _experiments={
+        "continuous_profiling_auto_start": True,
+    },
+)

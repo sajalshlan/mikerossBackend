@@ -28,3 +28,5 @@ Thumbs.db
 
 # Render specific
 staticfiles/
+cert.pem
+key.pem

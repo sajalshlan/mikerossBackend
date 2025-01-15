@@ -19,14 +19,3 @@ class User(AbstractUser):
 
     class Meta:
         db_table = 'users'
-
-class Document(models.Model):
-    title = models.CharField(max_length=255)
-    file = models.FileField(upload_to='documents/')
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
-    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = 'documents'
