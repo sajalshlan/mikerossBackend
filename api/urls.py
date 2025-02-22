@@ -22,4 +22,11 @@ urlpatterns = [
     path('preview_pdf_as_docx/', views.preview_pdf_as_docx, name='preview_pdf_as_docx'),
     path('chat/', views.chat, name='chat'),
     path('api_summary/', views.get_api_summary, name='api_summary'),
+    path('plugin/explain_text/', views.plugin_explain_text, name='plugin_explain_text'),
+    path('plugin/reply_to_comment/', views.plugin_reply_to_comment, name='plugin_reply_to_comment'),
+    path('plugin/redraft_comment/', views.plugin_redraft_comment, name='plugin_redraft_comment'),
+    path('plugin/analyze_clauses/', views.plugin_analyze_clauses, name='plugin_analyze_clauses'),
+    path('plugin/analyze_parties/', views.plugin_analyze_parties, name='plugin_analyze_parties'),
+    path('plugin/redraft_text/', views.plugin_redraft_text, name='plugin_redraft_text'),
+    path('plugin/brainstorm_chat/', views.plugin_brainstorm_chat, name='plugin_brainstorm_chat'),
 ]

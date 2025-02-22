@@ -1148,3 +1148,457 @@ def get_api_summary(request):
         return Response({
             'error': str(e)
         }, status=500)
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def plugin_explain_text(request):
+    """
+    Plugin version of explain_text that uses only Gemini.
+    """
+    resource_monitor.log_memory("Starting plugin explanation request")
+    
+    selected_text = None
+    context_text = None
+    prompt = None
+    
+    try:
+        selected_text = request.data.get('selectedText')
+        context_text = request.data.get('contextText')
+        
+        if not selected_text:
+            return Response({'error': 'No text selected for explanation'}, status=400)
+            
+        prompt = f"""
+        You are provided with a document and a section of text from that document.
+        Your task is to explain the selected text in more detail being a legal expert. Do not mention about your role.
+        
+        Document Context:
+        {context_text} 
+        
+        Selected Text to Explain:
+        {selected_text}
+        
+        Provide a to the point and very concise explanation of the selected text keeping in mind the context of the document.
+        """
+        
+        result = gemini_call(prompt, "")
+        return Response(result)
+        
+    except Exception as e:
+        logger.exception("Error generating explanation")
+        return Response({'error': str(e)}, status=500)
+    finally:
+        del selected_text
+        del context_text
+        del prompt
+        resource_monitor.force_cleanup()
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def plugin_brainstorm_chat(request):
+    """
+    Plugin version of brainstorm_chat that uses only Gemini.
+    """
+    resource_monitor.log_memory("Starting plugin brainstorm chat")
+    
+    message = None
+    clause_text = None
+    analysis = None
+    document_content = None
+    prompt = None
+    
+    try:
+        message = request.data.get('message')
+        clause_text = request.data.get('clauseText')
+        analysis = request.data.get('analysis')
+        document_content = request.data.get('documentContent')
+            
+        prompt = f"""
+        You are a legal expert helping to brainstorm and discuss solutions for contract clauses. 
+        Consider the following context:
+
+        Document Context:
+        {document_content}
+
+        Clause being discussed:
+        {clause_text}
+
+        Analysis of the clause:
+        {analysis}
+
+        User's message:
+        {message}
+
+        Please provide a helpful, detailed response that:
+        1. Directly addresses the user's message/question
+        2. Considers the specific context of the clause
+        3. References relevant legal principles or best practices
+        4. Suggests practical solutions or alternatives when appropriate
+        5. Maintains a conversational yet professional tone
+
+        Focus on being constructive and solution-oriented while maintaining legal accuracy.
+        """
+        result = gemini_call(prompt, "")
+        return Response({
+            'success': True,
+            'message': result
+        })
+        
+    except Exception as e:
+        logger.exception("Error in plugin brainstorm chat")
+        return Response({
+            'error': str(e)
+        }, status=500)
+    finally:
+        del message
+        del clause_text
+        del analysis
+        del document_content
+        del prompt
+        resource_monitor.force_cleanup()
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def plugin_reply_to_comment(request):
+    """
+    Plugin version of reply_to_comment that uses only Gemini.
+    """
+    resource_monitor.log_memory("Starting plugin reply generation request")
+    
+    comment = None
+    document_content = None
+    instructions = None
+    replies = None
+    replies_context = None
+    prompt = None
+    
+    try:
+        comment = request.data.get('comment')
+        document_content = request.data.get('documentContent')
+        instructions = request.data.get('instructions', '')
+        replies = request.data.get('replies', [])
+        
+        if not comment or not document_content:
+            return Response({
+                'error': 'Missing required data (comment or document content)'
+            }, status=400)
+            
+        # Format replies for context
+        replies_context = ""
+        if replies:
+            replies_context = "\n\nComment Thread:\n"
+            for idx, reply in enumerate(replies, 1):
+                replies_context += f"Reply {idx}: {reply['content']}\n"
+            
+        prompt = f"""
+        You are tasked with generating a reply to a comment in a document. Consider the following:
+        
+        Document Content:
+        {document_content}
+        
+        Original Comment:
+        {comment}
+        {replies_context}
+        
+        Instructions for Reply:
+        {instructions if instructions else "Maintain the same tone and length as the original comment while considering the context of any replies."}
+        
+        Please provide a reply that:
+        1. Maintains professional tone
+        2. Addresses the same core issues
+        3. Takes into account the context from any replies
+        4. Follows any provided instructions
+        5. Is clear and concise
+        
+        Provide only the reply without any explanations or additional text.
+        """
+        
+        result = gemini_call(prompt, "")
+        return Response({'success': True, 'result': result})
+        
+    except Exception as e:
+        logger.exception("Error generating reply")
+        return Response({'error': str(e)}, status=500)
+    finally:
+        del comment
+        del document_content
+        del instructions
+        del replies
+        del replies_context
+        del prompt
+        resource_monitor.force_cleanup()
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def plugin_redraft_comment(request):
+    """
+    Plugin version of redraft_comment that uses only Gemini.
+    """
+    resource_monitor.log_memory("Starting plugin redraft generation request")
+    
+    comment = None
+    document_content = None
+    selected_text = None
+    instructions = None
+    replies = None
+    replies_context = None
+    prompt = None
+    
+    try:
+        comment = request.data.get('comment')
+        document_content = request.data.get('documentContent')
+        selected_text = request.data.get('selectedText')
+        instructions = request.data.get('instructions', '')
+        replies = request.data.get('replies', [])
+        
+        if not all([comment, document_content, selected_text]):
+            return Response({
+                'error': 'Missing required data (comment, document content, or selected text)'
+            }, status=400)
+            
+        # Format replies for context
+        replies_context = ""
+        if replies:
+            replies_context = "\n\nComment Thread:\n"
+            for idx, reply in enumerate(replies, 1):
+                replies_context += f"Reply {idx}: {reply['content']}\n"
+            
+        prompt = f"""
+        You are tasked with redrafting a portion of text from a document based on comments and feedback. Consider the following:
+        
+        Document Context:
+        {document_content}
+        
+        Original Text to Redraft:
+        {selected_text}
+        
+        Comment on this text:
+        {comment}
+        {replies_context}
+        
+        Instructions for Redraft:
+        {instructions if instructions else "Improve the text while maintaining the document's style and addressing the feedback in the comments."}
+        
+        Please provide a redraft that:
+        1. Maintains the document's tone and style
+        2. Addresses the issues raised in the comments
+        3. Improves clarity and precision
+        4. Follows any provided instructions
+        5. Fits seamlessly into the document context
+        
+        Provide only the redrafted text without any explanations or additional text.
+        """
+        
+        result = gemini_call(prompt, "")
+        return Response({'success': True, 'result': result})
+        
+    except Exception as e:
+        logger.exception("Error generating redraft")
+        return Response({'error': str(e)}, status=500)
+    finally:
+        del comment
+        del document_content
+        del selected_text
+        del instructions
+        del replies
+        del replies_context
+        del prompt
+        resource_monitor.force_cleanup()
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def plugin_redraft_text(request):
+    """
+    Plugin version of redraft_text that uses only Gemini.
+    """
+    try:
+        selected_text = request.data.get('selectedText')
+        document_content = request.data.get('documentContent')
+        instructions = request.data.get('instructions', '')
+
+        if not selected_text or not document_content:
+            return Response({
+                'success': False,
+                'error': 'Missing required parameters'
+            }, status=400)
+
+        # Create prompt for redrafting
+        prompt = f"""
+        You are a legal document expert. Your task is to redraft the following text to improve its clarity, 
+        precision, and legal effectiveness while maintaining its original intent.
+
+        Document Context:
+        {document_content}
+
+        Text to Redraft:
+        {selected_text}
+
+        {f"Additional Instructions: {instructions}" if instructions else ""}
+
+        Please provide only the redrafted text without any explanations or additional text.
+        Ensure the redrafted version:
+        1. Maintains legal accuracy and enforceability
+        2. Improves clarity and readability
+        3. Uses consistent terminology
+        4. Follows standard legal drafting conventions
+        """
+
+        result = gemini_call(prompt, "")
+
+        return Response({
+            'success': True,
+            'result': result
+        })
+
+    except Exception as e:
+        logger.exception("Error in plugin redraft_text endpoint")
+        return Response({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def plugin_analyze_clauses(request):
+    """
+    Plugin version of analyze_clauses that uses only Gemini.
+    """
+    text = None
+    result = None
+    
+    try:
+        text = request.data.get('text', '')
+        party_info = request.data.get('partyInfo', {})  # Provide empty dict as default
+        
+        if not text:
+            return Response({'error': 'No text provided'}, status=400)
+        
+        if not party_info:
+            logger.warning("No party info provided for clause analysis")
+            
+        if party_info:
+            party_name = party_info.get('name', '')
+            party_role = party_info.get('role', '')
+            prompt = f"""
+            Analyze the following legal document from the perspective of {party_name} 
+            (acting as {party_role}) and categorize its clauses into three categories:
+            
+            1. Acceptable Clauses: Terms that are favorable or standard for {party_name}
+            2. Risky Clauses: Terms that pose potential risks or need negotiation for {party_name}
+            3. Missing Clauses: Important clauses that should be present to protect {party_name}'s interests
+            
+            Consider the specific role and interests of {party_name} as {party_role} 
+            when analyzing each clause.
+            
+            For each clause identified, provide:
+            - Category
+            - Clause title/type
+            - Relevant text excerpt
+            - Explanation of categorization from {party_name}'s perspective
+            
+            Format the response as a JSON structure and only return the JSON:
+            {{
+                "acceptable": [
+                    {{
+                        "title": "clause title",
+                        "text": "complete clause text exactly as it appears in the document",
+                        "explanation": "why acceptable for {party_name}",
+                    }}
+                ],
+                "risky": [...],
+                "missing": [...]
+            }}
+            Only return the JSON, no other text.
+            """
+        else:
+            prompt = """
+            Analyze the following legal document and categorize its clauses into three categories:
+            1. Acceptable Clauses: Standard terms that follow industry best practices
+            2. Risky Clauses: Terms that need attention or negotiation
+            3. Missing Clauses: Important clauses that should be present but are not
+            
+            For each clause identified, provide:
+            - Category
+            - Clause title/type
+            - Relevant text excerpt
+            - Proper explanation of categorization
+            
+            Format the response as a JSON structure:
+            {
+                "acceptable": [
+                    {
+                        "title": "clause title",
+                        "text": "complete clause text exactly as it appears in the document",
+                        "explanation": "why acceptable",
+                    }
+                ],
+                "risky": [...],
+                "missing": [...]
+            }
+            """
+        
+        result = gemini_call(text, prompt)
+        return Response({
+            'success': True,
+            'result': result
+        })
+    except Exception as e:
+        logger.error(f"Error in plugin analyze_clauses: {str(e)}")
+        return Response({
+            'error': str(e)
+        }, status=500)
+    finally:
+        del text
+        del result
+        gc.collect()
+
+@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def plugin_analyze_parties(request):
+    """
+    Plugin version of analyze_parties that uses only Gemini.
+    """
+    text = None
+    try:
+        text = request.data.get('text')
+        if not text:
+            return Response({'error': 'No text provided'}, status=400)
+            
+        prompt = """
+        Analyze the following legal document and identify all parties involved.
+        For each party, provide:
+        1. Party name
+        2. Role in the document (e.g., Buyer, Seller, Lender, Borrower, etc.)
+        
+        Return the results in this JSON format:
+        {
+            "parties": [
+                {
+                    "name": "party name",
+                    "role": "party role"
+                }
+            ]
+        }
+
+        just the parties and roles, no other text
+        """
+        
+        result = gemini_call(text, prompt)
+        return Response({
+            'success': True,
+            'parties': result
+        })
+    except Exception as e:
+        return Response({
+            'error': str(e)
+        }, status=500)
+    finally:
+        del text
+        gc.collect()
