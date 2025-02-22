@@ -1543,7 +1543,7 @@ def plugin_analyze_clauses(request):
             }
             """
         
-        result = gemini_call(text, prompt)
+        result = gemini_call_pro(text, prompt)
         return Response({
             'success': True,
             'result': result

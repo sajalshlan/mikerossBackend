@@ -599,9 +599,7 @@ def gemini_call(text, prompt):
                 [system_prompt, prompt],
                 generation_config=genai.types.GenerationConfig(
                 temperature=0.1,  # Slightly increased for more natural language while maintaining precision
-                max_output_tokens=4000,  # Increased token limit for more comprehensive responses
-                top_p=0.8,  # Added for better response quality
-                top_k=40,  # Added for better response diversity while maintaining relevance
+                max_output_tokens=8000,  # Increased token limit for more comprehensive responses
                 )
             )
         else:
@@ -609,9 +607,7 @@ def gemini_call(text, prompt):
                 [system_prompt, text, prompt],
                 generation_config=genai.types.GenerationConfig(
                 temperature=0.1,  # Slightly increased for more natural language while maintaining precision
-                max_output_tokens=4000,  # Increased token limit for more comprehensive responses
-                top_p=0.8,  # Added for better response quality
-                top_k=40,  # Added for better response diversity while maintaining relevance
+                max_output_tokens=8000,  # Increased token limit for more comprehensive responses
                 )
             )
         token_counts = {
@@ -624,6 +620,31 @@ def gemini_call(text, prompt):
     except Exception as e:
         logger.error(f"Error calling Gemini API: {str(e)}")
         raise Exception(f"An error occurred while calling Gemini API: {e}")
+    
+def gemini_call_pro(text, prompt):
+    logger.info("Calling Gemini API for plugin")
+    system_prompt = """You are a highly experienced legal assistant to the General Counsel of a Fortune 500 company."""
+    try:
+        model = genai.GenerativeModel('gemini-1.5-pro')
+        response = model.generate_content(
+            [system_prompt, text, prompt],
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.1,
+                max_output_tokens=8000,
+                top_p=0.8,
+                top_k=40
+            )
+        )
+        token_counts = {
+            'prompt': response.usage_metadata.prompt_token_count,
+            'output': response.usage_metadata.candidates_token_count,
+            'total': response.usage_metadata.total_token_count
+        }
+        logger.info(f"Gemini API completed - Tokens: {token_counts}")
+        return response.text
+    except Exception as e:
+        logger.error(f"Error calling Gemini API for plugin: {str(e)}")
+        raise Exception(f"An error occurred while calling Gemini API for plugin: {e}")
 
 def claude_call(text, prompt):
     logger.info("Calling Claude SONNET API")

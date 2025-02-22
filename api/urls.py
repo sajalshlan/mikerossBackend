@@ -22,6 +22,8 @@ urlpatterns = [
     path('preview_pdf_as_docx/', views.preview_pdf_as_docx, name='preview_pdf_as_docx'),
     path('chat/', views.chat, name='chat'),
     path('api_summary/', views.get_api_summary, name='api_summary'),
+
+    # plugin routes
     path('plugin/explain_text/', views.plugin_explain_text, name='plugin_explain_text'),
     path('plugin/reply_to_comment/', views.plugin_reply_to_comment, name='plugin_reply_to_comment'),
     path('plugin/redraft_comment/', views.plugin_redraft_comment, name='plugin_redraft_comment'),
