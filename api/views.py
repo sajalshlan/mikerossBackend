@@ -24,7 +24,8 @@ from .utils import (
     check_common_parties,
     analyze_conflicts,
     convert_pdf_to_docx,
-    gemini_call
+    gemini_call,
+    gemini_call_pro
 )
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
